@@ -1,6 +1,6 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Mon 09 Nov 2015 02:58:25 PM MST
+# Last Modified: Mon 09 Nov 2015 04:52:29 PM MST
 # Author: Brett Fedack
 
 
@@ -8,7 +8,7 @@ import curses
 import curses.ascii as ascii
 import weakref
 from . import signals
-from .core import Widget, ContentWidget
+from .core import Widget, ContentWidget, key_from_char
 
 
 class Button(ContentWidget):
@@ -733,6 +733,22 @@ class SelectField(InputField):
 
             # Draw option.
             self.draw_text(option, row = margin[2] + i, margin = margin, padding = padding, expand = expand, attr = attr)
+
+        # Indicate if content exists outside of the scrollable region.
+        if Widget.input_focus is self:
+            attr = self.style('border')
+            padding = (1, 1)
+
+            # Indicate content above.
+            up_arrow = u'\u25B2'
+            if self._vert_scroll > 0:
+                self.draw_text(up_arrow, padding = padding, align = 'CENTER', attr = attr)
+
+
+            # Indicate content below.
+            down_arrow = u'\u25BC'
+            if self._vert_scroll + height - 2 < len(self._options):
+                self.draw_text(down_arrow, row = height - 1, padding = padding, align = 'CENTER', attr = attr)
 
 
     def operate(self, c):
