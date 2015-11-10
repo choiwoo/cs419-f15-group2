@@ -1,6 +1,6 @@
 # Filename: core.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Mon 09 Nov 2015 02:44:20 PM MST
+# Last Modified: Mon 09 Nov 2015 09:08:16 PM MST
 # Author: Brett Fedack
 
 
@@ -385,7 +385,9 @@ class Widget(metaclass = MetaWidget):
 
         # Encapsulate a curses window in this widget.
         pwin = self._parent._win if parent else curses.newwin(0, 0)
-        win = curses.newwin(*pwin.getmaxyx(), *pwin.getbegyx())
+        ph, pw = pwin.getmaxyx()
+        py, px = pwin.getbegyx()
+        win = curses.newwin(ph, pw, py, px)
         win.keypad(1)
         win.nodelay(1)
         self._win = win
