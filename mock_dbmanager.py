@@ -1,6 +1,6 @@
 # Filename: mock_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Mon 09 Nov 2015 03:00:58 PM MST
+# Last Modified: Mon 09 Nov 2015 05:04:42 PM MST
 # Author: Brett Fedack
 
 
@@ -198,7 +198,7 @@ class DatabaseManager():
         '''
         # NOTE: Mock databases are stored as a global.
 
-        # Unset database, if specified.
+        # Unset database if unspecified.
         if database is None:
             self._database_curr = None
             self._emit(
@@ -247,7 +247,7 @@ class DatabaseManager():
         '''
         # NOTE: Mock databases are stored as a global.
 
-        # Unset table, if specified.
+        # Unset table if unspecified.
         if table is None:
             self._table_curr = None
             self._emit(
