@@ -1,6 +1,6 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Mon 09 Nov 2015 04:52:29 PM MST
+# Last Modified: Mon 09 Nov 2015 05:01:07 PM MST
 # Author: Brett Fedack
 
 
@@ -8,7 +8,7 @@ import curses
 import curses.ascii as ascii
 import weakref
 from . import signals
-from .core import Widget, ContentWidget, key_from_char
+from .core import Widget, ContentWidget
 
 
 class Button(ContentWidget):
