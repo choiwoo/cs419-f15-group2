@@ -1,6 +1,6 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Mon 09 Nov 2015 05:01:07 PM MST
+# Last Modified: Mon 09 Nov 2015 09:22:06 PM MST
 # Author: Brett Fedack
 
 
@@ -571,7 +571,7 @@ class TextField(InputField):
             self._text += chr(c)
 
         # Delete a character.
-        elif c in {ascii.BS, ascii.DEL}:
+        elif c in {ascii.BS, ascii.DEL, curses.KEY_BACKSPACE}:
             self.tag_redraw()
             self._text = self._text[:-1]
 
@@ -635,7 +635,7 @@ class NumericField(InputField):
             self._number += chr(c)
 
         # Delete a character.
-        elif c in {ascii.BS, ascii.DEL}:
+        elif c in {ascii.BS, ascii.DEL, curses.KEY_BACKSPACE}:
             self.tag_redraw()
             self._number = self._number[:-1]
 
