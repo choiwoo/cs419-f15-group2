@@ -1,6 +1,6 @@
 # Filename: mock_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Mon 09 Nov 2015 05:04:42 PM MST
+# Last Modified: Sat 14 Nov 2015 12:16:01 AM MST
 # Author: Brett Fedack
 
 
@@ -77,6 +77,7 @@ class DatabaseManager():
         self._add_signal_handler('DB_LIST_TABLES', self.list_tables)
         self._add_signal_handler('DB_SET_DATABASE', self.set_database)
         self._add_signal_handler('DB_SET_TABLE', self.set_table)
+        self._add_signal_handler('DB_RAW_QUERY', self.query_raw)
 
 
     def __del__(self):
@@ -113,6 +114,26 @@ class DatabaseManager():
         return self._signal_router.forward(signal)
 
 
+    def _emit_error(self, error_message):
+        '''
+        Emits a signal containing feedback for the UI in response to an error
+
+        Parameters:
+            error_message (str): Message indicating an error
+        '''
+        self._emit('UI_FEEDBACK', message = error_message, error = True)
+
+
+    def _emit_success(self, success_message):
+        '''
+        Emits a signal containing feedback for the UI in response to success
+
+        Parameters:
+            error_message (str): Message indicating success
+        '''
+        self._emit('UI_FEEDBACK', message = success_message, error = False)
+
+
     def connect(self, hostname, port, username, password, **kwargs):
         '''
         Establishes a connection with the given server
@@ -128,33 +149,26 @@ class DatabaseManager():
         '''
         # Validate inputs & component state.
         if not hostname:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Hostname must be specified',
-                error = True
-            )
+            self._emit_error('Hostname must be specified')
             return False
         if not port:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Port number must be specified',
-                error = True
-            )
+            self._emit_error('Port number must be specified')
             return False
 
         # NOTE: Assume all other arguments are optional for the sake of this mock-up.
 
-        # Connect to server.
+        # Store connection state internally.
         self._hostname = hostname
         self._port = port
         self._username = username
         self._password = password
         self._connected = True
-        self._emit(
-            'UI_FEEDBACK',
-            message = 'Connection with server established',
-            error = False
-        )
+
+        # Connect to server.
+        # TODO: Peewee stuff
+
+        # Inform the system of success.
+        self._emit_success('Connection with server established')
 
         return True
 
@@ -168,22 +182,68 @@ class DatabaseManager():
         '''
         # Validate inputs & component state.
         if not self._connected:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Not connected to a server',
-                error = True
-            )
+            self._emit_error('Not connected to a server')
             return False
 
         # Disconnect from the current server.
+        # TODO: Peewee stuff
+
+        # Store connection state internally.
         self._connected = False
-        self._emit(
-            'UI_FEEDBACK',
-            message = 'Connection with server terminated',
-            error = False
-        )
+
+        # Inform the system of success.
+        self._emit_success('Connection with server terminated')
 
         return True
+
+
+    def import_db(self, path, filetype, **kwargs):
+        '''
+        Imports a database from the given file
+
+        Parameters:
+            path (str): Path to input file
+            filetype (str): Format of input file
+
+        Returns:
+            True if a new database is created; False otherwise
+        '''
+        # Validate inputs & component state.
+        if not self._connected:
+            self._emit_error('Not connected to a server')
+            return False
+
+        # Import given file.
+        # TODO: Peewee stuff
+
+        # Inform system of success.
+        self._emit_success('Database successfully imported from file')
+
+
+    def export_db(self, path, filetype, **kwargs):
+        '''
+        Exports current database to the given file
+
+        Parameters:
+            path (str): Path to output file
+            filetype (str): Format of output file
+
+        Returns:
+            True if a new file is created; False otherwise
+        '''
+        # Validate inputs & component state.
+        if not self._connected:
+            self._emit_error('Not connected to a server')
+            return False
+        if not self._database_curr:
+            self._emit_error('No database selected')
+            return False
+
+        # Export current database to given file.
+        # TODO: Peewee stuff
+
+        # Inform system of success.
+        self._emit_success('Database successfully exported to file')
 
 
     def set_database(self, database, **kwargs):
@@ -201,36 +261,22 @@ class DatabaseManager():
         # Unset database if unspecified.
         if database is None:
             self._database_curr = None
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Database unset'.format(database),
-                error = False
-            )
+            self._emit_success('Database unset')
             return False
 
         # Validate inputs & component state.
         if not self._connected:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Not connected to a server',
-                error = True
-            )
+            self._emit_error('Not connected to a server')
             return False
-        if not database in mock_databases:
-            self._emit(
-                'UI_FEEDBACK',
-                message = '"{}" database not found on server'.format(database),
-                error = True
-            )
+        if not database in mock_databases: # TODO: Peewee stuff
+            self._emit_error('"{}" database not found on server'.format(database))
             return False
 
         # Set the database.
         self._database_curr = database
-        self._emit(
-            'UI_FEEDBACK',
-            message = '"{}" set as current database'.format(database),
-            error = False
-        )
+
+        # Inform system of success.
+        self._emit_success('"{}" set as current database'.format(database))
 
         return True
 
@@ -250,44 +296,27 @@ class DatabaseManager():
         # Unset table if unspecified.
         if table is None:
             self._table_curr = None
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Table unset'.format(table),
-                error = False
-            )
+            self._emit_success('Table unset')
             return False
 
         # Validate inputs & component state.
         if not self._connected:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Not connected to a server',
-                error = True
-            )
+            self._emit_error('Not connected to a server')
             return False
         if not self._database_curr:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'No database selected',
-                error = True
-            )
-            return []
-        if not table in mock_databases[self._database_curr]:
-            self._emit(
-                'UI_FEEDBACK',
-                message = '"{}" table not found in "{}" database'.format(
-                    table, self._database_curr
-                ), error = True
-            )
+            self._emit_error('No database selected')
+            return False
+        if not table in mock_databases[self._database_curr]: # TODO: Peewee stuff
+            self._emit_error('"{}" table not found in "{}" database'.format(
+                table, self._database_curr
+            ))
             return False
 
         # Set the table.
         self._table_curr = table
-        self._emit(
-            'UI_FEEDBACK',
-            message = '"{}" set as current table'.format(table),
-            error = False
-        )
+
+        # Inform the system of success.
+        self._emit_success('"{}" set as current table'.format(table))
 
         return True
 
@@ -303,15 +332,14 @@ class DatabaseManager():
 
         # Validate inputs & component state.
         if not self._connected:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Not connected to a server',
-                error = True
-            )
+            self._emit_error('Not connected to a server')
             return []
 
-        # Transmit database list.
+        # Acquire a listing of databases on the server.
+        # TODO: Peewee stuff
         database_list = list(mock_databases.keys())
+
+        # Transmit database list.
         self._emit('UI_DATABASE_LIST', databases = database_list)
 
         return database_list
@@ -328,22 +356,17 @@ class DatabaseManager():
 
         # Validate inputs & component state.
         if not self._connected:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Not connected to a server',
-                error = True
-            )
+            self._emit_error('Not connected to a server')
             return []
         if not self._database_curr:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'No database selected',
-                error = True
-            )
+            self._emit_error('No database selected')
             return []
 
-        # Transmit table list.
+        # Acquire a listing of tables in the current database.
+        # TODO: Peewee stuff
         table_list = mock_databases[self._database_curr]
+
+        # Transmit table list.
         self._emit('UI_TABLE_LIST', tables = table_list)
 
         return table_list
@@ -353,6 +376,9 @@ class DatabaseManager():
         '''
         Queries current database using the given string
 
+        Parameters:
+            raw (str): Literal form of query
+
         Returns:
             str: Query result
         '''
@@ -360,12 +386,11 @@ class DatabaseManager():
 
         # Validate inputs & component state.
         if not self._connected:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Not connected to a server',
-                error = True
-            )
-            return []
+            self._emit_error('Not connected to a server')
+            return ''
+
+        # Submit raw query to the DBMS.
+        # TODO: Peewee stuff
 
         # Transmit query result.
         self._emit('UI_RAW_QUERY', result = mock_raw_query_result)

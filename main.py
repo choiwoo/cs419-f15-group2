@@ -1,7 +1,7 @@
 #!/bin/env python3
 
 
-from mock_dbmanager import DatabaseManager
+from tests.mock_dbmanager import DatabaseManager
 from ui import build_ui
 from uiframework import signals
 
@@ -21,5 +21,6 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         import curses
-        curses.endwin()
+        if not curses.isendwin():
+            curses.endwin()
         raise e
