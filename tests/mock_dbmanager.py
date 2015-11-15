@@ -1,6 +1,6 @@
 # Filename: mock_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Sat 14 Nov 2015 12:16:01 AM MST
+# Last Modified: Sun 15 Nov 2015 01:26:43 AM MST
 # Author: Brett Fedack
 
 
@@ -23,12 +23,30 @@ mock_databases = {
 
 
 # Mock Raw Query Result
-mock_raw_query_result = ' '.join([
-    'Good afternoon, gentlemen. I am a HAL 9000 computer. I became',
-    'operational at the H.A.L. plant in Urbana, Illinois on the 12th',
-    'of January 1992. My instructor was Mr. Langley, and he taught me',
-    'to sing a song. If you\'d like to hear it I can sing it for you.'
-])
+mock_raw_query_result ='''\
+HAL: Good afternoon, gentlemen.
+
+HAL: I am a HAL 9000 computer.
+
+HAL: I became 'operational at the H.A.L. plant in Urbana, Illinois on the \
+12th, of January 1992.
+
+HAL: My instructor was Mr. Langley, and he taught me to sing a song.
+
+HAL: If you\'d like to hear it I can sing it for you.
+
+DAVE BOWMAN: Yes, I\'d like to hear it, HAL. Sing it for me.
+
+HAL: It\'s called Daisy.
+
+HAL: Daisy, Daisy, give me your answer do.
+
+HAL: I\'m half crazy all for the love of you.
+
+HAL: It won\'t be a stylish marriage, I can\'t afford a carriage.
+
+HAL: But you\'ll look sweet upon the seat of a bicycle built for two.
+'''
 
 
 class DatabaseManager():
@@ -385,9 +403,9 @@ class DatabaseManager():
         # NOTE: Mock raw query result is a global.
 
         # Validate inputs & component state.
-        if not self._connected:
-            self._emit_error('Not connected to a server')
-            return ''
+        #  if not self._connected:
+            #  self._emit_error('Not connected to a server')
+            #  return ''
 
         # Submit raw query to the DBMS.
         # TODO: Peewee stuff
@@ -395,4 +413,4 @@ class DatabaseManager():
         # Transmit query result.
         self._emit('UI_RAW_QUERY', result = mock_raw_query_result)
 
-        return result
+        return mock_raw_query_result
