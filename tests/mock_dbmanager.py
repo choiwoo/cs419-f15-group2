@@ -4,8 +4,8 @@
 # Author: Brett Fedack
 
 
-from uiframework import signals
-#import signals
+#from uiframework import signals
+import signals
 import psycopg2
 # NOTE: By convention, signals with "UI_" prefix are sent to the user
 # interface, and those with "DB_" prefix are received by this component.
