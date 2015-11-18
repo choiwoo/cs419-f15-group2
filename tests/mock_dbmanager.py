@@ -1,6 +1,6 @@
 # Filename: mock_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Sun 15 Nov 2015 01:26:43 AM MST
+# Last Modified: Wed 18 Nov 2015 01:18:20 AM MST
 # Author: Brett Fedack
 
 
@@ -11,7 +11,7 @@ from uiframework import signals
 # interface, and those with "DB_" prefix are received by this component.
 
 
-# Mock Database List
+# Mock Data
 mock_databases = {
     'Book Store': [
         'Book', 'Genre', 'Author', 'Customer', 'Publisher', 'Inventory'
@@ -20,9 +20,21 @@ mock_databases = {
         'Car', 'Make', 'Model', 'Employee', 'Customer', 'Order'
     ]
 }
-
-
-# Mock Raw Query Result
+mock_table_contents = [
+    ['Id', 'First Name', 'Surname',  'DoB'       ],
+    [1,    'Linus',      'Torvalds', '1969-12-28'],
+    [2,    'Richard',    'Stallman', '1953-03-16'],
+    [3,    'Bill',       'Gates',    '1955-10-28'],
+    [4,    'Steve',      'Jobs',     '1955-02-24'],
+    [5,    'Steve',      'Wozniak',  '1950-08-11']
+]
+mock_table_structure = [
+    ['Field',      'Type',        'Null', 'Key', 'Default',    'Extra'         ],
+    ['Id',         'int(11)',     'NO',   'PRI', 'NULL',       'auto_increment'],
+    ['First Name', 'varchar(20)', 'NO',   '',    '',           ''              ],
+    ['Surname',    'varchar(20)', 'NO',   '',    '',           ''              ],
+    ['DoB',        'date',        'NO',   '',    '0000-00-00', ''              ],
+]
 mock_raw_query_result ='''\
 HAL: Good afternoon, gentlemen.
 
@@ -45,7 +57,7 @@ HAL: I\'m half crazy all for the love of you.
 
 HAL: It won\'t be a stylish marriage, I can\'t afford a carriage.
 
-HAL: But you\'ll look sweet upon the seat of a bicycle built for two.
+HAL: But you\'ll look sweet upon the seat of a bicycle built for two.\
 '''
 
 
@@ -390,6 +402,66 @@ class DatabaseManager():
         return table_list
 
 
+    def list_table_contents(self, **kwargs):
+        '''
+        Queries current table for a listing of its contents
+
+        Returns:
+            list<list>: List of table rows (first is header)
+        '''
+        # Validate inputs & component state.
+        if not self._connected:
+            self._emit_error('Not connected to a server')
+            return []
+        if not self._table_curr:
+            self._emit_error('No table selected')
+            return []
+        if not self._table_curr in mock_databases[self._database_curr]: # TODO: Peewee stuff
+            self._emit_error('"{}" table not found in "{}" database'.format(
+                self._table_curr, self._database_curr
+            ))
+            return []
+
+        # Acquire a listing of the current table's contents.
+        # TODO: Peewee stuff
+        table_contents = mock_table_contents
+
+        # Transmit table contents.
+        self._emit('UI_TABLE_CONTENTS', table_contents = table_contents)
+
+        return table_contents
+
+
+    def list_table_structure(self, **kwargs):
+        '''
+        Queries current table for a listing of its structure
+
+        Returns:
+            list<list>: List of table strucure (first is header)
+        '''
+        # Validate inputs & component state.
+        if not self._connected:
+            self._emit_error('Not connected to a server')
+            return []
+        if not self._table_curr:
+            self._emit_error('No table selected')
+            return []
+        if not self._table_curr in mock_databases[self._database_curr]: # TODO: Peewee stuff
+            self._emit_error('"{}" table not found in "{}" database'.format(
+                self._table_curr, self._database_curr
+            ))
+            return []
+
+        # Acquire a listing of the current table's structure.
+        # TODO: Peewee stuff
+        table_structure = mock_table_structure
+
+        # Transmit table structure.
+        self._emit('UI_TABLE_STRUCTURE', table_structure = table_structure)
+
+        return table_structure
+
+
     def query_raw(self, raw, **kwargs):
         '''
         Queries current database using the given string
@@ -403,9 +475,9 @@ class DatabaseManager():
         # NOTE: Mock raw query result is a global.
 
         # Validate inputs & component state.
-        #  if not self._connected:
-            #  self._emit_error('Not connected to a server')
-            #  return ''
+        if not self._connected:
+            self._emit_error('Not connected to a server')
+            return ''
 
         # Submit raw query to the DBMS.
         # TODO: Peewee stuff
