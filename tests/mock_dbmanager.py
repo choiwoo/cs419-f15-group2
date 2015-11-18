@@ -4,9 +4,9 @@
 # Author: Brett Fedack
 
 
-#from uiframework import signals
-import signals
-import psycopg2
+from uiframework import signals
+
+
 # NOTE: By convention, signals with "UI_" prefix are sent to the user
 # interface, and those with "DB_" prefix are received by this component.
 
@@ -67,7 +67,6 @@ class DatabaseManager():
         _connected (bool): Flag indicating if component is connect to a server
         _database_curr (str): Name of currently selected database
         _table_curr (str): Name of currently selected table
-        _database_state (psycopg2.connect): psycopg2 connect class
     '''
     def __init__(self, signal_router = None):
         '''
@@ -88,10 +87,9 @@ class DatabaseManager():
         self._connected = False
         self._database_curr = ''
         self._table_curr = ''
-        self._database_state = ''
 
         # Setup signal handling.
-        self._add_signal_handler('DB_CONNECT', self.connect_handler)
+        self._add_signal_handler('DB_CONNECT', self.connect)
         self._add_signal_handler('DB_DISCONNECT', self.disconnect)
         self._add_signal_handler('DB_LIST_DATABASES', self.list_databases)
         self._add_signal_handler('DB_LIST_TABLES', self.list_tables)
@@ -192,67 +190,6 @@ class DatabaseManager():
 
         return True
 
-    def connect_handler(self, username, password, hostname, port, **kwargs):
-        '''
-        Establishes a connection with the given server
-        Parameters:
-            hostname (str): Name of host machine on which the server is located
-            username (str): Username for server login
-            password (str): Password for server login
-            port (int): Port number identifying server on the host machine
-        Returns:
-            bool: True if connection established; False otherwise
-        '''
-        # Validate inputs & component state.
-        if not hostname:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Hostname must be specified',
-                error = True
-            )
-            return False
-
-        if not port:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Port number must be specified',
-                error = True
-            )
-            return False
-        #print("Starting connect_handler...")
-        try:
-            self._username = username
-            self._password = password
-            self._hostname = hostname
-            self._port = port
-
-            psql_db = psycopg2.connect(user=self._username,password=self._password,
-            host=self._hostname, port=self._port)
-
-
-            #print("Connect_handler's attempt for connection is successful...")
-
-            self._connected = True
-            self._database_state = psql_db
-
-        except NameError as e:
-            #self._msg_handler("Key error at %s"%( str(e)),True)
-            print("Name error %s"%(str(e)))
-            return False
-        except psycopg2.Error as e:
-            #self._msg_handler("Connection error %s"%( str(e)),True)
-            print("Connection error %s"%(str(e)))
-            return False
-
-        self._emit(
-            'UI_FEEDBACK',
-            message = 'Connection with server established',
-            error = False
-        )
-
-        #print("connect_handler is now finished.\n\n")
-        return True
-
 
     def disconnect(self, **kwargs):
         '''
@@ -267,8 +204,7 @@ class DatabaseManager():
             return False
 
         # Disconnect from the current server.
-        # No error checking at the moment
-        self._database_state.close()
+        # TODO: Peewee stuff
 
         # Store connection state internally.
         self._connected = False
@@ -350,29 +286,12 @@ class DatabaseManager():
         if not self._connected:
             self._emit_error('Not connected to a server')
             return False
-        #if not database in mock_databases: # TODO: Peewee stuff
-        #    self._emit_error('"{}" database not found on server'.format(database))
-        #    return False
+        if not database in mock_databases: # TODO: Peewee stuff
+            self._emit_error('"{}" database not found on server'.format(database))
+            return False
 
         # Set the database.
         self._database_curr = database
-
-        # First close current connection.
-        self._database_state.close()
-
-        # Reestablish connection
-        # NOTE: no error checking
-        psql_db = psycopg2.connect(dbname=self._database_curr, user=self._username,
-        password=self._password, host=self._hostname, port=self._port)
-
-        self._database_state = psql_db
-
-        # Checking (test)
-        #cursor = psql_db.cursor()
-        #cursor.execute("SELECT current_database()")
-        #records = cursor.fetchall()
-        #print(records)
-        #cursor.close()
 
         # Inform system of success.
         self._emit_success('"{}" set as current database'.format(database))
@@ -435,15 +354,8 @@ class DatabaseManager():
             return []
 
         # Acquire a listing of databases on the server.
-
-        cursor = self._database_state.cursor()
-        cursor.execute("SELECT datname FROM pg_database")
-        records = cursor.fetchall()
-        database_list = list(records)
-        #print(database_list)
-        cursor.close()
-
-        #database_list = list(mock_databases.keys())
+        # TODO: Peewee stuff
+        database_list = list(mock_databases.keys())
 
         # Transmit database list.
         self._emit('UI_DATABASE_LIST', databases = database_list)
@@ -491,21 +403,14 @@ class DatabaseManager():
         # NOTE: Mock raw query result is a global.
 
         # Validate inputs & component state.
-        if not self._connected:
-            self._emit_error('Not connected to a server')
-            return ''
+        #  if not self._connected:
+            #  self._emit_error('Not connected to a server')
+            #  return ''
 
         # Submit raw query to the DBMS.
         # TODO: Peewee stuff
-        # No input checking yet
-        cursor = self._database_state.cursor()
-        cursor.execute(raw)
-        raw_result = cursor.fetchall()
-        cursor.close()
-
-        self._emit('UI_RAW_QUERY', result = raw_result)
-        return raw_result
 
         # Transmit query result.
-        #self._emit('UI_RAW_QUERY', result = mock_raw_query_result)
-        #return mock_raw_query_result
+        self._emit('UI_RAW_QUERY', result = mock_raw_query_result)
+
+        return mock_raw_query_result
