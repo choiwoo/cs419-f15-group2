@@ -1,6 +1,6 @@
 # Filename: signals.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Mon 09 Nov 2015 11:05:44 AM MST
+# Last Modified: Tue 17 Nov 2015 06:54:11 PM MST
 # Author: Brett Fedack
 
 
@@ -18,7 +18,7 @@ class Signal():
         _propagate (bool): Flag controlling whether or not a signal can be
             handled multiple times
     '''
-    def __init__(self, name, data = dict(), propagate = True):
+    def __init__(self, name, data = dict(), propagate = True, **kwargs):
         '''
         Parameters:
             name (str): _name attribute initializer
@@ -29,9 +29,13 @@ class Signal():
         self._data = data
         self._propagate = propagate
 
+        # Include all other keyword arguments in carried data.
+        self._data.update(kwargs)
+
         # Include signal name and propagation flag in carried data.
         self._data['_name'] = name
         self._data['_propagate'] = propagate
+
 
     @property
     def data(self):
