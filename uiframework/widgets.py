@@ -1,19 +1,20 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Mon 09 Nov 2015 09:22:06 PM MST
+# Last Modified: Wed 18 Nov 2015 12:28:19 AM MST
 # Author: Brett Fedack
 
 
+import math
 import curses
 import curses.ascii as ascii
 import weakref
 from . import signals
-from .core import Widget, ContentWidget
+from .core import Widget, ContentWidget, Group
 
 
 class Button(ContentWidget):
     '''
-    Push button widgets
+    Push button widget
 
     Attributes:
         _is_pushed (bool): Button state
@@ -29,7 +30,7 @@ class Button(ContentWidget):
         return {'usage': 'Enter:Execute'}
 
 
-    def focus(self):
+    def focus(self, **kwargs):
         # This button has yet to be pushed.
         self._is_pushed = False
 
@@ -62,67 +63,6 @@ class Button(ContentWidget):
     def fit(self):
         ''' Fits button to padded label width '''
         self.resize(len(self._label) + 4, 1)
-
-
-class SelectionList(ContentWidget):
-    def __init__(self, label, parent, focus_key = None):
-        # Initialize inherited state.
-        super().__init__(label, parent, focus_key)
-
-        # Initialize attributes.
-        self.items = []
-        self.highlight = 0
-        self.selection = None
-
-    def report(self):
-        return {'usage': 'Up/Down:Scroll, Enter:Select'}
-
-    def operate(self, c):
-        if c in {curses.KEY_DOWN, curses.KEY_UP, curses.KEY_ENTER, ascii.LF, ascii.CR}:
-            self.tag_redraw()
-
-            # Highlight the next item, wrapping if necessary.
-            if c == curses.KEY_DOWN:
-                if self.highlight + 1 == len(self.items):
-                    self.highlight = 0
-                else:
-                    self.highlight += 1
-
-            # Highlight the previous item, wrapping if necessary.
-            elif c == curses.KEY_UP:
-                if self.highlight == 0:
-                    self.highlight = len(self.items) - 1
-                else:
-                    self.highlight -= 1
-
-            # Select the highlighted item.
-            elif c in {curses.KEY_ENTER, ascii.LF, ascii.CR}:
-                self.selection = self.highlight
-
-        return 'CONTINUE'
-
-
-    def draw(self):
-        items = self.items
-
-        # Add a border.
-        self.draw_border()
-        self.draw_text(self._label, row = 0, padding = (1, 1), margin = (1, 1, 0, 1), hint = self._focus_key, align = 'CENTER')
-
-        # Draw the items of this list.
-        for i in range(len(items)):
-            item = items[i]
-
-            # Draw the current item.
-            if i == self.highlight:
-                attr = self.style('highlight')
-            else:
-                attr = self.style('text')
-            self.draw_text(item, row = i + 1, margin = (4, 1, 1, 1), attr = attr, expand = 'RIGHT')
-
-            # Draw the selected item.
-            if i == self.selection:
-                self.draw_text('*', row = i + 1, margin = (2, 1, 1, 1), attr = attr)
 
 
 class StatusLine(ContentWidget):
@@ -200,8 +140,7 @@ class StatusLine(ContentWidget):
             if c in {curses.KEY_ENTER, ascii.LF, ascii.CR}:
 
                 # Emit the requested confirmation signal.
-                signal = signals.Signal(self._sigconfirm)
-                self.bubble(**signal.data)
+                self.bubble(**self._sigconfirm.data)
 
                 return 'END'
 
@@ -255,6 +194,19 @@ class Tab(ContentWidget):
     Attributes:
         _tab_list (list<Tab>): List of sibling tabs
     '''
+    @property
+    def content_region(self):
+        '''
+        Creates a group for the valid content region of this widget
+
+        Returns:
+            Group: Valid content region
+        '''
+        region = Group(self)
+        region.scale(height = -2).offset(y = 2).inset(1)
+        return region
+
+
     def __init__(self, label, parent, focus_key = None):
         # Initialize inherited state.
         super().__init__(label, parent, focus_key)
@@ -263,10 +215,7 @@ class Tab(ContentWidget):
         self._tab_list = []
 
         # Update tab list.
-        if parent:
-            tab_list = [node for node in parent._children if type(node) is Tab]
-        else:
-            tab_list = [self]
+        tab_list = [node for node in parent._children if isinstance(node, Tab)]
 
         # Synchronize sibling tab lists.
         for tab in tab_list:
@@ -278,7 +227,7 @@ class Tab(ContentWidget):
             tab.hide()
 
 
-    def focus(self):
+    def focus(self, **kwargs):
         # Hide all sibling tabs.
         for tab in self._tab_list:
             tab.hide()
@@ -341,6 +290,74 @@ class Tab(ContentWidget):
         )
 
 
+class VertTab(Tab):
+    ''' Tabbed container for widgets (aligned vertically) '''
+    @property
+    def content_region(self):
+        '''
+        Creates a widget group for the valid content region of this tab
+
+        Returns:
+            Group: Valid content region
+        '''
+        tab_width = max([len(node.label) for node in self._tab_list]) + 4
+        region = Group(self)
+        region.scale(width = -1 * (tab_width - 1))
+        region.offset(tab_width - 1).inset(1)
+        return region
+
+
+    def draw(self):
+        width, height = self.get_size()
+        tab_list = self._tab_list
+
+        # Determine width of all tabs.
+        tab_width = max([len(node.label) for node in self._tab_list]) + 4
+
+        # Draw sibling tabs.
+        tab_offset = 1
+        margin = (2, width - tab_width + 2, 1, 1)
+        for i in range(len(tab_list)):
+            tab = tab_list[i]
+
+            # Draw border around sibling tab's label.
+            if tab is self:
+                si = i
+            else:
+                self.draw_border(
+                    offset_right = width - tab_width,
+                    offset_top = 3 * i + tab_offset,
+                    offset_bottom = height - (3 * i + 2 + tab_offset) - 1,
+                    attr = self.style('inactive')
+                )
+
+            # Draw sibling tab's label.
+            if tab is not self:
+                self.draw_text(
+                    tab.label, row = 3 * i + 1 + tab_offset, margin = margin, hint = tab._focus_key,
+                    attr = self.style('inactive')
+                )
+
+        # Add border around contained widgets.
+        self.draw_border(offset_left = tab_width - 1)
+
+        # Draw border around this tab.
+        self.draw_border(
+            offset_right = width - tab_width,
+            offset_top = 3 * si + tab_offset,
+            offset_bottom = height - (3 * si + 2 + tab_offset) - 1,
+            char_right = ord(' '),
+            char_top_right = curses.ACS_LRCORNER,
+            char_bottom_right = curses.ACS_URCORNER
+        )
+
+        # Draw this tab's label.
+        self.draw_text(
+            self._label, row = 3 * si + 1 + tab_offset, margin = margin, hint = self._focus_key,
+            attr = self.style('label')
+        )
+
+
 class Text(ContentWidget):
     '''
     Text display widget
@@ -353,11 +370,11 @@ class Text(ContentWidget):
         Parameters:
             style (str): Theme style attribute for text content
         '''
-        # Prevent this widget from receiving input focus.
-        focus_key = None
-
         # Initialize inherited state.
-        super().__init__(label, parent, focus_key)
+        super().__init__(label, parent)
+
+        # Prevent this widget from receiving input focus.
+        self._is_focusable = False
 
         # Initialize attributes.
         self._style = style
@@ -389,7 +406,7 @@ class Text(ContentWidget):
         Parameters:
             raw (str): Raw string
         '''
-        for line in raw.split('\n'):
+        for line in raw.splitlines():
             self.add_line(line)
 
 
@@ -406,19 +423,27 @@ class Label(ContentWidget):
         return self._used_by() if self._used_by else None
 
 
-    def __init__(self, label, parent, used_by):
-        # Prevent this widget from receiving input focus.
-        focus_key = None
-
-        # Initialize inherited state.
-        super().__init__(label, parent, focus_key)
-
+    def __init__(self, parent, used_by):
         # Initialize attributes.
         self._used_by = weakref.ref(used_by)
-        self._text = used_by._label
+        self._label = used_by._label
+
+        # Initialize inherited state.
+        super().__init__(self._label, parent)
+
+        # Prevent this widget from receiving input focus.
+        self._is_focusable = False
 
         # Initialize size.
         self.fit()
+
+
+    def draw(self):
+        # Used referenced style.
+        style = self.used_by.style
+
+        # Draw the embellished label.
+        self.draw_text(self.label, attr = style('label'), hint = self.used_by._focus_key)
 
 
     def embellish(self, prefix = '', suffix = ''):
@@ -428,38 +453,109 @@ class Label(ContentWidget):
         Parameters:
             prefix (str): Text to add before label (Optional)
             suffix (str): Text to add after label (Optional)
+
+        Returns:
+            Widget: Alias to this widget
         '''
-        self._text = prefix + self.used_by._label + suffix
+        self._label = prefix + self.used_by._label + suffix
         self.fit()
-
-
-    def draw(self):
-        # Used referenced style.
-        style = self.used_by.style
-
-        # Draw the embellished label.
-        self.draw_text(self._text, attr = style('label'), hint = self.used_by._focus_key)
+        return self
 
 
     def fit(self):
-        ''' Fits this widget's dimensions to its content '''
-        self.resize(len(self._text), 1)
-
-
-    def to_row(self, row):
         '''
-        Aligns this label with the given row of the widget that uses it
+        Fits this widget's dimensions to its content
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        self.resize(len(self._label), 1)
+        return self
+
+
+    def shift(self, multiple):
+        '''
+        Offsets horizontally by a multiple of this label's width
 
         Parameters:
-            row (int): Alignment row of widget that uses this label
+            multiple (float): Scalar multiple of label's width
+
+        Returns:
+            Widget: Alias to this widget
         '''
-        self.move(y = self.used_by.get_position()[1] + row)
+        self.offset(x = round(multiple * self.get_size()[0]))
+        return self
 
 
-    def to_leftside(self):
-        ''' Moves this label to the left side of the widget that uses it '''
-        x, y = self.used_by.get_position()
-        self.move(x - len(self._text))
+    def to_center(self, cross = False):
+        '''
+        Moves this label to the center of the widget that uses it
+
+        Parameters:
+            cross (bool): Cross-alignment flag (Optional)
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        ux, uy = self.used_by.get_position()
+        uw, uh = self.used_by.get_size()
+        sw, sh = self.get_size()
+        if cross:
+            self.move(y = uy + int((uh - sh) / 2))
+        else:
+            self.move(x = ux + int((uw - sw) / 2))
+        return self
+
+
+    def to_left(self):
+        '''
+        Moves this label to the left edge of the widget that uses it
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        ux = self.used_by.get_position()[0]
+        self.move(x = ux)
+        return self
+
+
+    def to_right(self):
+        '''
+        Moves this label to the right edge of the widget that uses it
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        ux = self.used_by.get_position()[0]
+        uw = self.used_by.get_size()[0]
+        sw = self.get_size()[0]
+        self.move(x = ux + uw - sw)
+        return self
+
+
+    def to_top(self):
+        '''
+        Moves this label to the top edge of the widget that uses it
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        uy = self.used_by.get_position()[1]
+        self.move(y = uy)
+        return self
+
+
+    def to_bottom(self):
+        '''
+        Moves this label to the bottom edge of the widget that uses it
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        uy = self.used_by.get_position()[1]
+        uh = self.used_by.get_size()[1]
+        self.move(y = uy + uh - 1)
+        return self
 
 
 class Labeled(ContentWidget):
@@ -481,7 +577,7 @@ class Labeled(ContentWidget):
         super().__init__(label, parent, focus_key)
 
         # Insert label node into the tree of widgets.
-        label = Label('label', parent, used_by = self)
+        label = Label(parent, used_by = self)
 
         # Link this widget to the label.
         ref = weakref.ref(label)
@@ -489,41 +585,579 @@ class Labeled(ContentWidget):
         self._links.append(ref)
 
 
+class FlipSwitch(Labeled):
+    '''
+    Boolean state widget
+
+    Attributes:
+        _init_state (bool): Switch state upon receiving focus
+        _on (bool): Flag indicating if this widget is switched on
+    '''
+    def __init__(self, label, parent, focus_key = None):
+        # Initialize inherited state.
+        super().__init__(label, parent, focus_key)
+        self._overrides_enter = True
+
+        # Initialize attributes.
+        self._init_state = False
+        self._on = False
+
+        # Initialize size.
+        self.resize(10, 3)
+
+
+    def report(self):
+        return {'usage': 'Enter:Toggle'}
+
+
+    def focus(self, **kwargs):
+        # Store initial switch state.
+        self._init_state = self._on
+
+
+    def compose(self):
+        return (self._on != self._init_state, {'enabled': self._on})
+
+
+    def draw(self):
+        width = self.get_size()[0]
+        half_width = width // 2
+
+        # Draw a border around the switch.
+        self.draw_border()
+
+        # Draw switch to the right-side if on; left-side otherwise.
+        if self._on:
+            self.draw_border(offset_left = half_width)
+        else:
+            self.draw_border(offset_right = half_width)
+
+        # Indicate switch state.
+        text = 'ON' if self._on else 'OFF'
+        margin = (2, half_width, 1, 1) if self._on else (half_width, 1, 1, 1)
+        self.draw_text(text, row = margin[2], margin = margin, attr = self.style('text') | curses.A_BOLD)
+
+
+    def operate(self, c):
+        # Toggle switch state.
+        if c in {curses.KEY_ENTER, ascii.LF, ascii.CR}:
+            self.tag_redraw()
+            self._on = not self._on
+        return 'CONTINUE'
+
+
+class NavPage(ContentWidget):
+    '''
+    Container for widgets that is controlled by a navigation list
+    '''
+    def __init__(self, label, parent, focus_key = None):
+        # Initialize inherited state.
+        super().__init__(label, parent, focus_key)
+
+
+    def draw(self):
+        # Draw a border around the page.
+        self.draw_border()
+
+        # Indicate selection in navlist.
+        left_arrow = u'\u25C0'
+        self.draw_text(left_arrow, row = self._parent._selection + 1)
+
+
+class NavList(Labeled):
+    '''
+    Navigable list of containers for widgets (pages)
+
+    Attributes:
+        _page_list (list<NavPage>): List of associated pages
+        _highlight (int): Index in page list of highlighted option
+        _selection (int): Index in page list of selected option
+        _list_width (int): Width of this widget reserved for list
+    '''
+    @property
+    def list_width(self):
+        ''' Getter for "list_width" property '''
+        return self._list_width
+
+
+    @list_width.setter
+    def list_width(self, value):
+        ''' Setter for "list_width" property '''
+        # Set value.
+        self._list_width = value
+
+        # Update position of navlist's label.
+        linked_label = self.linked_label
+        linked_label.to_top().to_left().embellish(' ', ' ')
+        linked_label.offset(x = (value - len(linked_label._label)) // 2)
+
+
+    def __init__(self, label, parent, focus_key = None):
+        # Initialize inherited state.
+        super().__init__(label, parent, focus_key)
+        self._overrides_enter = True
+
+        # Initialize attributes.
+        self._page_list = []
+        self._highlight = 0
+        self._selection = None
+        self.list_width = 15
+
+
+    def focus(self, **kwargs):
+        # Highlight selected page.
+        self._highlight = self._selection if self._selection else 0
+
+
+    def new_page(self, label):
+        '''
+        Creates a page and inserts it into this navlist
+
+        Parameters:
+            label (str): Identifier for page in navlist
+
+        Returns:
+            NavPage: Alias to created page
+        '''
+        # Create a widget to serve as a container for page elements.
+        page = NavPage(label, self)
+
+        # Select the first page by default.
+        if self._page_list:
+            page.hide()
+        else:
+            self._selection = 0
+
+        # Associate page with this navlist.
+        self._page_list.append(page)
+
+        # Initialize page layout.
+        sx, sy = self.get_position()
+        sw, sh = self.get_size()
+        list_width = self.list_width
+        page.resize(sw - list_width, sh)
+        page.move(sx + list_width - 2, sy)
+
+        return page
+
+
+    def draw(self):
+        page_list = self._page_list
+        selection = self._selection
+        selected_page = page_list[selection] if selection >= 0 else None
+        margin = (1, self.get_size()[0] - self.list_width + 1, 1, 1)
+        padding = (1, 1)
+
+        # Draw a border around the navlist.
+        self.draw_border(offset_right = margin[1] - 1)
+
+        # Draw navlist options.
+        for i in range(len(page_list)):
+            page = page_list[i]
+            attr = self.style('highlight') if i == self._highlight else self.style('text')
+            self.draw_text(page._label, row = i + margin[2], padding = padding, margin = margin, expand = 'RIGHT', attr = attr)
+
+
+    def operate(self, c):
+        page_list = self._page_list
+        selection = self._selection
+        selected_page = page_list[selection] if selection >= 0 else None
+
+        if c in {curses.KEY_DOWN, curses.KEY_UP, curses.KEY_ENTER, ascii.LF, ascii.CR}:
+            self.tag_redraw()
+
+            # Highlight the next option, wrapping if necessary.
+            if c == curses.KEY_DOWN:
+                self._highlight += 1
+                self._highlight %= len(page_list)
+
+            # Highlight the previous option, wrapping if necessary.
+            elif c == curses.KEY_UP:
+                self._highlight -= 1
+                self._highlight %= len(page_list)
+
+            # Select the highlighted option.
+            elif c in {curses.KEY_ENTER, ascii.LF, ascii.CR}:
+                self._select(self._highlight)
+
+        return 'CONTINUE'
+
+
+    def _select(self, page_idx):
+        '''
+        Selects given page in the navlist and transfers input focus
+
+        Parameters:
+            page_idx: Index of page in navlist
+        '''
+        page_list = self._page_list
+        selection = self._selection
+
+        # Select indexed page.
+        if page_idx >= 0 and page_idx < len(page_list):
+
+            # Update visibility states.
+            page_list[selection].hide()
+            page_list[page_idx].show()
+
+            # Set selection and transfer input focus.
+            self._selection = page_idx
+            Widget.input_focus = page_list[page_idx]
+
+
 class TextBox(Labeled):
     '''
-    Multi-line text input widget
+    Multi-line text input/display widget
+
+    Parameters:
+        _text (str): Text content
+        _cursor_offset: Position of cursor relative to beginning of the text
+        _col_scroll (int): Index corresponding to left of viewable region
+        _row_scroll (int): Index corresponding to top of viewable region
+        _read_only (bool): Flag controlling ability to edit this widget
+    '''
+    def __init__(self, label, parent, focus_key = None):
+        # Initialize inherited state.
+        super().__init__(label, parent, focus_key)
+        self._overrides_enter = True
+
+        # Initialize attributes.
+        self._text = ''
+        self._cursor_offset = 0
+        self._col_scroll = 0
+        self._row_scroll = 0
+        self._read_only = False
+
+
+    def clear(self, **kwargs):
+        self._text = ''
+        self._cursor_offset = 0
+        self._col_scroll = 0
+        self._row_scroll = 0
+
+
+    def report(self):
+        usage = 'Up/Down/Left/Right: Move Cursor'
+        if not self._read_only:
+            usage = 'Type text input. Up/Down/Left/Right: Move Cursor'
+        else:
+            usage = 'Up/Down/Left/Right: Scroll'
+        return {'usage': usage}
+
+
+    def compose(self):
+        return (self._read_only and self._text != '', {'text': self._text})
+
+
+    def decompose(self, text, **kwargs):
+        self.clear()
+        self._text = text
+
+
+    def draw(self):
+        margin = [2, 3, 1, 1]
+        width, height = self.get_size()
+        effective_width = width - margin[0] - margin[1]
+        effective_height = height - margin[2] - margin[3]
+        text = self._text
+        offset = self._cursor_offset
+        col_scroll = self._col_scroll
+        row_scroll = self._row_scroll
+
+        # Draw border around the text box.
+        self.draw_border(offset_right = 1)
+
+        # Draw lines of text.
+        line_list = self._build_line_list()
+        for i in range(len(line_list[row_scroll:])):
+            line = line_list[i + row_scroll]
+            self.draw_text(line[col_scroll:], row = i + margin[2], margin = margin, fit = 'NO_WRAP')
+
+        # Draw the cursor.
+        if not self._read_only:
+            col_offset, row_offset = self._split_offset(offset)
+            self.draw_cursor(col_offset + margin[0] - col_scroll, row_offset + margin[2] - row_scroll, margin = margin)
+
+        # Indicate if content exists outside of the visible region.
+        if Widget.input_focus is self:
+            attr = self.style('border')
+            padding = (1, 1)
+            center_row = math.ceil(height / 2) - 1
+
+            # Indicate content before.
+            if col_scroll > 0:
+                left_arrow = u'\u25C0'
+                self.draw_text(left_arrow, row = center_row, align = 'LEFT', attr = attr)
+
+            # Indicate content after.
+            num_cols = max([len(i) for i in text.splitlines() or [text]])
+            if col_scroll < num_cols - effective_width:
+                right_arrow = u'\u25B6'
+                self.draw_text(right_arrow, row = center_row, margin = (width - 2, 0, 0, 0), attr = attr)
+
+            # Indicate content above.
+            if row_scroll > 0:
+                up_arrow = u'\u25B2'
+                self.draw_text(up_arrow, padding = padding, align = 'CENTER', attr = attr)
+
+            # Indicate content below.
+            num_rows = len(line_list)
+            if row_scroll < num_rows - effective_height:
+                down_arrow = u'\u25BC'
+                self.draw_text(down_arrow, row = height - 1, padding = padding, align = 'CENTER', attr = attr)
+
+
+    def operate(self, c):
+        margin = [2, 3, 1, 1]
+        width, height = self.get_size()
+        effective_width = width - margin[0] - margin[1]
+        effective_height = height - margin[2] - margin[3]
+        text = self._text
+        offset = self._cursor_offset
+        col_offset, row_offset = self._split_offset(self._cursor_offset)
+        col_scroll = self._col_scroll
+        row_scroll = self._row_scroll
+
+        # Enforce read-only constraint.
+        if not self._read_only:
+
+            # Add a character.
+            if (ascii.isprint(c)
+                or c in {curses.KEY_ENTER, ascii.LF, ascii.CR}
+            ):
+                self.tag_redraw()
+
+                # Insert character before the cursor.
+                self._text = text[:offset] + chr(c) + text[offset:]
+
+                # Update offset of the cursor.
+                self._cursor_offset += 1
+
+            # Delete a character.
+            elif (c in {ascii.BS, ascii.DEL, curses.KEY_BACKSPACE}
+                  and offset > 0
+            ):
+                self.tag_redraw()
+
+                # Delete character preceding the cursor.
+                self._text = text[:offset - 1] + text[offset:]
+
+                # Update offset of the cursor.
+                self._cursor_offset -= 1
+
+            # Move cursor left unless start of either text or line is
+            # encountered.
+            if (c == curses.KEY_LEFT
+                and offset > 0
+                and ord(text[offset - 1]) not in {
+                    curses.KEY_ENTER, ascii.LF, ascii.CR
+                }
+            ):
+                self.tag_redraw()
+                self._cursor_offset -= 1
+
+            # Move cursor right unless end of either text or line is
+            # encountered.
+            elif (c == curses.KEY_RIGHT
+                  and offset < len(text)
+                  and ord(text[offset]) not in {
+                      curses.KEY_ENTER, ascii.LF, ascii.CR
+                }
+            ):
+                self.tag_redraw()
+                self._cursor_offset += 1
+
+            # Move cursor up.
+            elif c == curses.KEY_UP:
+                self.tag_redraw()
+                self._cursor_offset = self._join_offsets(col_offset, row_offset - 1)
+
+            # Move cursor down.
+            elif c == curses.KEY_DOWN:
+                self.tag_redraw()
+                self._cursor_offset = self._join_offsets(col_offset, row_offset + 1)
+
+
+            # Scroll if necessary.
+            col_offset, row_offset = self._split_offset(self._cursor_offset)
+            if col_offset < col_scroll:
+                self._col_scroll = col_offset
+            elif col_offset > col_scroll + effective_width - 1:
+                self._col_scroll += col_offset - (col_scroll + effective_width - 1)
+                self._col_scroll = col_offset - (effective_width - 1)
+            if row_offset < row_scroll:
+                self._row_scroll = row_offset
+            elif row_offset > row_scroll + effective_height - 1:
+                self._row_scroll = row_offset - (effective_height - 1)
+
+        else: # Read-only mode
+            line_list = self._build_line_list()
+            num_cols = max([len(i) for i in line_list])
+            num_rows = len(line_list)
+            scroll_sensitivity = 1
+
+            # Scroll left.
+            if c == curses.KEY_LEFT:
+                self.tag_redraw()
+                self._col_scroll = max(0, col_scroll - 2 * scroll_sensitivity)
+
+            # Scroll right.
+            elif c == curses.KEY_RIGHT:
+                self.tag_redraw()
+                self._col_scroll = min(
+                    col_scroll + 2 * scroll_sensitivity,
+                    max(0, num_cols - effective_width)
+                )
+
+            # Scroll up.
+            elif c == curses.KEY_UP:
+                self.tag_redraw()
+                self._row_scroll = max(0, row_scroll - 1 * scroll_sensitivity)
+
+            # Scroll down.
+            elif c == curses.KEY_DOWN:
+                self.tag_redraw()
+                self._row_scroll = min(
+                    row_scroll + 1 * scroll_sensitivity,
+                    max(0, num_rows - effective_height)
+                )
+
+        return 'CONTINUE'
+
+
+    def read_only(self):
+        ''' Prevents editing of this widget '''
+        self._read_only = True
+
+        # Remove default navigation overrides.
+        self._overrides_enter = False
+
+
+    def _build_line_list(self, strip = False):
+        '''
+        Builds lines of text from the string of text content
+
+        Parameters:
+            strip (bool): Flag controlling removal of trailing, blank lines
+
+        Returns:
+            list<str>: Lines of text
+        '''
+        # Build line list from text content.
+        line_list = self._text.splitlines() or [self._text]
+
+        # Remove any trailing blank lines.
+        if strip:
+            while len(line_list) > 1 and line_list[-1].strip() == '':
+                line_list.pop()
+
+        return line_list
+
+
+    def _join_offsets(self, col_offset, row_offset):
+        '''
+        Calculates linear offset with line-breaks from 2-dimensional offset
+
+        Parameters:
+            col_offset (int): Horizontal offset value
+            row_offset (int): Vertical offset value
+
+        Returns:
+            int: Linear offset value
+        '''
+        offset = 0
+        line_list = self._build_line_list()
+        row_offset = max(0, min(row_offset, len(line_list) - 1))
+        for line in line_list[:row_offset]:
+            offset += len(line) + 1
+        offset += min(col_offset, len(line_list[row_offset]))
+        return offset
+
+
+    def _split_offset(self, offset):
+        '''
+        Calculates 2-dimensional offsets from linear offset and line-breaks
+
+        Parameters:
+            offset (int): Linear offset value
+
+        Returns:
+            2-tuple: horizontal offset (int), vertical offset (int)
+        '''
+        col = max(0, offset)
+        row = 0
+        line_list = self._build_line_list()
+        for line in line_list:
+            line_len = len(line) if line else 0
+            if line_len >= col:
+                break;
+            row += 1
+            col -= line_len + 1
+        return col, row
+
+
+class NumericField(Labeled):
+    '''
+    Integer input widget
+
+    Attributes:
+        _number (str): String representation of number
     '''
     def __init__(self, label, parent, focus_key = None):
         # Initialize inherited state.
         super().__init__(label, parent, focus_key)
 
         # Initialize attributes.
-        self._text = ''
+        self._number = ''
 
-
-class InputField(Labeled):
-    ''' General input widget '''
-    def __init__(self, label, parent, focus_key = None):
-        # Initialize inherited state.
-        super().__init__(label, parent, focus_key)
-
-        # Initialize size.
+        # Initialize height.
         self.resize(height = 3)
 
-        # Embellish label.
-        self.linked_label.embellish(suffix = ': ')
+
+    def clear(self, **kwargs):
+        self._number = ''
+
+    def report(self):
+        return {'usage': 'Enter numeric input.'}
+
+
+    def compose(self, **kwargs):
+        return (
+            self._number != '',
+            {'number': int(self._number) if self._number else None}
+        )
 
 
     def draw(self):
-        # Position label to the left of the input field.
-        self.linked_label.to_row(1)
-        self.linked_label.to_leftside()
+        margin = [2, 2, 1, 1]
+        number = self._number
 
-        # Draw border around the input field.
+        # Draw border around the text field.
         self.draw_border()
 
+        # Draw the numeric input.
+        self.draw_text(number, row = 1, padding = (0, 1), margin = margin, fit = 'CLIP_LEFT')
 
-class TextField(InputField):
+        # Draw the cursor.
+        margin[0] = min(len(number) + margin[0], self.get_size()[0] - margin[1] - 1)
+        self.draw_cursor(margin[0], 1, margin = margin)
+
+
+    def operate(self, c):
+        # Add a digit.
+        if ascii.isdigit(c):
+            self.tag_redraw()
+            self._number += chr(c)
+
+        # Delete a character.
+        elif c in {ascii.BS, ascii.DEL, curses.KEY_BACKSPACE}:
+            self.tag_redraw()
+            self._number = self._number[:-1]
+
+        return 'CONTINUE'
+
+
+class TextField(Labeled):
     '''
     Text input widget
 
@@ -539,9 +1173,16 @@ class TextField(InputField):
         self._text = ''
         self._is_obscured = False
 
+        # Initialize height.
+        self.resize(height = 3)
+
+
+    def clear(self, **kwargs):
+        self._text = ''
+
 
     def report(self):
-        return {'usage': 'Enter text input.'}
+        return {'usage': 'Type text input.'}
 
 
     def compose(self, **kwargs):
@@ -549,19 +1190,19 @@ class TextField(InputField):
 
 
     def draw(self):
-        # Draw the label and input field.
-        super().draw()
+        margin = [2, 2, 1, 1]
 
-        margin = [1, 1, 1, 1]
+        # Draw border around the text field.
+        self.draw_border()
 
-        #  Draw the text input.
+        # Draw the text input.
         text = self._text
         text = '*' *  len(text) if self._is_obscured else text
         self.draw_text(text, row = 1, padding = (0, 1), margin = margin, fit = 'CLIP_LEFT')
 
         # Draw the cursor.
-        margin[0] = min(len(text) + 1, self.get_size()[0] - 2)
-        self.draw_text(' ', row = 1, margin = margin, attr = self.style('cursor'))
+        margin[0] = min(len(text) + margin[0], self.get_size()[0] - margin[1] - 1)
+        self.draw_cursor(margin[0], 1, margin = margin)
 
 
     def operate(self, c):
@@ -588,61 +1229,7 @@ class TextField(InputField):
         self._is_obscured = False;
 
 
-class NumericField(InputField):
-    '''
-    Integer input widget
-
-    Attributes:
-        _number (str): String representation of number
-    '''
-    def __init__(self, label, parent, focus_key = None):
-        # Initialize inherited state.
-        super().__init__(label, parent, focus_key)
-
-        # Initialize attributes.
-        self._number = ''
-
-    def report(self):
-        return {'usage': 'Enter numeric input.'}
-
-
-    def compose(self, **kwargs):
-        return (
-            self._number != '',
-            {'number': int(self._number) if self._number else None}
-        )
-
-
-    def draw(self):
-        # Draw the label and input field.
-        super().draw()
-
-        margin = [1, 1, 1, 1]
-        number = self._number
-
-        #  Draw the numeric input.
-        self.draw_text(number, row = 1, padding = (0, 1), margin = margin, fit = 'CLIP_LEFT')
-
-        # Draw the cursor.
-        margin[0] = min(len(number) + 1, self.get_size()[0] - 2)
-        self.draw_text(' ', row = 1, margin = margin, attr = self.style('cursor'))
-
-
-    def operate(self, c):
-        # Add a digit.
-        if ascii.isdigit(c):
-            self.tag_redraw()
-            self._number += chr(c)
-
-        # Delete a character.
-        elif c in {ascii.BS, ascii.DEL, curses.KEY_BACKSPACE}:
-            self.tag_redraw()
-            self._number = self._number[:-1]
-
-        return 'CONTINUE'
-
-
-class SelectField(InputField):
+class SelectField(Labeled):
     '''
     Enumerated input widget
 
@@ -651,7 +1238,7 @@ class SelectField(InputField):
         _options_limit (int): Maximum number of options to display
         _highlight (int): Highlighted index in list of options
         _init_highlight (int): Highlight index at the time of gaining focus
-        _vert_scroll (int): Index corresponding to top of viewable region
+        _row_scroll (int): Index corresponding to top of viewable region
         _expanded (bool): Flag indicating if options list is expanded/collapsed
         _overlayed (bool): Flag indicating if expanded options list has been
             drawn over siblings
@@ -666,9 +1253,14 @@ class SelectField(InputField):
         self._options_limit = -1
         self._highlight = 0
         self._init_highlight = 0
-        self._vert_scroll = 0
+        self._row_scroll = 0
         self._auto_expand = False
         self.collapse()
+
+
+    def clear(self, **kwargs):
+        self._options = ['-- NO SELECTION --']
+        self._highlight = 0
 
 
     def report(self):
@@ -689,44 +1281,38 @@ class SelectField(InputField):
             self.expand()
 
 
-    def focus(self):
+    def focus(self, **kwargs):
         # Store initial highlighted option.
         self._init_highlight = self._highlight
 
-        # Expand options list on focus if automated.
+        # Expand options list on focus.
         if self._auto_expand:
             self.expand()
 
-        # Scroll to the highlighted option.
-        self._vert_scroll = self._highlight
-
 
     def blur(self):
-        # Scroll to the highlighted option.
-        self._vert_scroll = self._highlight
-
         # Collapse options list on blur if automated.
         if self._auto_expand:
             self.collapse()
 
 
     def draw(self):
-        # Draw the label and input field.
-        super().draw()
-
         width, height = self.get_size()
         margin = [1, 1, 1, 1]
         padding = (1, 1)
 
+        # Draw border around the text field.
+        self.draw_border()
+
         # Draw the list of options.
-        vert_scroll = self._vert_scroll
-        options_section = self._options[vert_scroll:][:height - 2]
+        row_scroll = self._row_scroll
+        options_section = self._options[row_scroll:][:height - 2]
         for i in range(len(options_section)):
             option = options_section[i]
 
             # Format and style option.
-            expand = 'AROUND' if not i + vert_scroll else 'RIGHT'
-            if i + vert_scroll == self._highlight:
+            expand = 'AROUND' if not i + row_scroll else 'RIGHT'
+            if i + row_scroll == self._highlight:
                 attr = self.style('highlight')
             else:
                 attr = self.style('text')
@@ -734,24 +1320,25 @@ class SelectField(InputField):
             # Draw option.
             self.draw_text(option, row = margin[2] + i, margin = margin, padding = padding, expand = expand, attr = attr)
 
-        # Indicate if content exists outside of the scrollable region.
+        # Indicate if content exists outside of the visible region.
         if Widget.input_focus is self:
             attr = self.style('border')
             padding = (1, 1)
 
             # Indicate content above.
             up_arrow = u'\u25B2'
-            if self._vert_scroll > 0:
+            if self._row_scroll > 0:
                 self.draw_text(up_arrow, padding = padding, align = 'CENTER', attr = attr)
-
 
             # Indicate content below.
             down_arrow = u'\u25BC'
-            if self._vert_scroll + height - 2 < len(self._options):
+            if self._row_scroll + height - 2 < len(self._options):
                 self.draw_text(down_arrow, row = height - 1, padding = padding, align = 'CENTER', attr = attr)
 
 
     def operate(self, c):
+        margin = [1, 1, 1, 1]
+
         # Draw expanded options list over siblings.
         if self._expanded and not self._overlayed:
             self.tag_redraw()
@@ -765,7 +1352,6 @@ class SelectField(InputField):
                 self._highlight += 1
                 self._highlight %= len(self._options)
 
-
             # Highlight the previous option, wrapping if necessary.
             elif c == curses.KEY_UP:
                 self._highlight -= 1
@@ -776,13 +1362,14 @@ class SelectField(InputField):
                 return 'END'
 
             # Scroll list if necessary.
-            effective_height = self.get_size()[1] - 2
-            if self._highlight < self._vert_scroll:
-                self._vert_scroll = self._highlight
-            elif self._highlight >= self._vert_scroll + effective_height:
-                self._vert_scroll = self._highlight - effective_height + 1
+            effective_height = self.get_size()[1] - margin[2] - margin[3]
+            if self._highlight < self._row_scroll:
+                self._row_scroll = self._highlight
+            elif self._highlight >= self._row_scroll + effective_height:
+                self._row_scroll = self._highlight - effective_height + 1
 
         return 'CONTINUE'
+
 
     def auto_expand(self):
         ''' Flags this widget for automated expansions of options list '''
@@ -796,6 +1383,9 @@ class SelectField(InputField):
 
         # Redraw siblings that may have been occluded by drop-down list.
         self._ancestor.tag_redraw()
+
+        # Scroll to the highlighted option.
+        self._row_scroll = self._highlight
 
         # Set state.
         self._expanded = False
@@ -838,3 +1428,5 @@ class SelectField(InputField):
         '''
         self._options = ['-- NO SELECTION --']
         self._options.extend(options)
+        if self._expanded:
+            self.expand()
