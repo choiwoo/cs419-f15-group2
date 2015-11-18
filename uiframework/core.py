@@ -1,6 +1,6 @@
 # Filename: core.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Mon 09 Nov 2015 09:08:16 PM MST
+# Last Modified: Wed 18 Nov 2015 04:29:27 PM MST
 # Author: Brett Fedack
 
 
@@ -107,7 +107,7 @@ class UI():
 
 
     def _transfer_down(self, new_focus):
-        ''' Transfers input focus to a descendent of the current focus
+        ''' Transfers input focus to a descendant of the current focus
 
             Parameters:
                 new_focus (Widget): New subject of input focus
@@ -166,11 +166,17 @@ class UI():
             descendants = input_focus._descendants
 
             # Transfer input focus upward.
-            if c == ascii.ESC and len(focus_trace) > 1:
+            if (c == ascii.ESC
+                and not input_focus._overrides_esc
+                and len(focus_trace) > 1
+            ):
                 self._backtrace()
 
             # Transfer input focus laterally.
-            elif c in {ascii.TAB, curses.KEY_BTAB} and len(siblings) > 1:
+            elif (c in {ascii.TAB, curses.KEY_BTAB}
+                  and not input_focus._overrides_tab
+                  and len(siblings) > 1
+            ):
 
                 # Determine if lateral navigation is possible.
                 if siblings and input_focus in siblings:
@@ -186,7 +192,10 @@ class UI():
                     focus_trace[-1] = weakref.ref(Widget.input_focus)
 
             # Transfer input focus downward.
-            elif c in {curses.KEY_ENTER, ascii.LF, ascii.CR} and descendants:
+            elif (c in {curses.KEY_ENTER, ascii.LF, ascii.CR}
+                  and not input_focus._overrides_enter
+                  and descendants
+            ):
                 self._transfer_down(descendants[0])
 
             # Transfer input focus directly to a descendant.
@@ -213,16 +222,21 @@ class UI():
 class MetaWidget(type):
     ''' Widget metaclass for defining class properties and static methods '''
     @staticmethod
-    def set_input_focus(new_focus):
+    def set_input_focus(new_focus, **kwargs):
         '''
         Setter for "input_focus" property
 
         Parameter:
             new_focus (Widget): Widget to set as new input focus
+            kwargs: Adapter for optional signal data
         '''
         # Validate input.
         if not isinstance(new_focus, Widget):
             raise TypeError('Received {}; expected Widget'.format(type(new_focus)))
+
+        # Return early if the given widget cannot receive input focus.
+        if not new_focus._is_focusable:
+            return
 
         # Retrieve previous input focus.
         previous_focus = Widget.input_focus
@@ -245,7 +259,7 @@ class MetaWidget(type):
 
             # Call overridable blur and focus methods.
             previous_focus.blur()
-            new_focus.focus()
+            new_focus.focus(**kwargs)
 
             # Emit a signal containing data from the previous input focus.
             output_is_ready, data = previous_focus.compose()
@@ -297,12 +311,20 @@ class Widget(metaclass = MetaWidget):
         _focus_map (dict<int:int>): Mapping of focus keys to descendant indices
         _links (list<weakref<Widget>>): Non-descendant nodes that are dependent
             on this widget
+        _is_focusable (bool): Flag indicating if this widget can gain input
+            focus
         _is_drawable (bool): Flag indicating if this widget can be drawn
         _is_tagged (bool): Flag indicating a pending draw operation
         _is_visible (bool): Flag indicating if the subtree rooted at this
             widget is visible
         _timestamp (datetime): Reference date & time for animation purposes;
             updates automatically when input focus changes
+        _overrides_enter (bool): Flag indicating if this widget overrides the
+            default downward navigation key
+        _overrides_esc (bool): Flag indicating if this widget overrides the
+            default backtrace navigation key
+        _overrides_tab (bool): Flag indicating if this widget overrides the
+            default lateral navigation key
 
     Preconditions:
         Curses library shall be intialized.
@@ -362,11 +384,14 @@ class Widget(metaclass = MetaWidget):
         self._descendants = []
         self._focus_map = dict()
 
-        # Find closest ancestor that can receive input focus or root node.
+        # Indicate that this widget can receive input focus.
+        self._is_focusable = True
+
+        # Find closest ancestor that can receive input focus.
         ancestor = parent
         while (ancestor
                and ancestor._parent
-               and ancestor._focus_key is None
+               and not ancestor._is_focusable
         ):
             ancestor = ancestor._parent
         self._ancestor = ancestor
@@ -380,8 +405,9 @@ class Widget(metaclass = MetaWidget):
         # Associate a signal router with this widget.
         self._signal_router = signal_router if signal_router else signals.SignalRouter()
 
-        # Setup input data signal handling.
+        # Setup signal handlers.
         self.add_signal_handler('DATASIG_IN', self.decompose)
+        self.add_signal_handler('DATASIG_FOCUS', self._focus)
 
         # Encapsulate a curses window in this widget.
         pwin = self._parent._win if parent else curses.newwin(0, 0)
@@ -401,6 +427,28 @@ class Widget(metaclass = MetaWidget):
         # Initialize timestamp
         self.update_timestamp()
 
+        # Disable overrides by default.
+        self._overrides_enter = False
+        self._overrides_esc = False
+        self._overrides_tab = False
+
+
+    def override(enter = False, esc = False, tab = False):
+        '''
+        Overrides the default behavior of navigation keys
+
+        Parameters:
+            enter (bool): Flag indicating if default downward navigation key
+                should be overriden (Optional)
+            esc (bool): Flag indicating if default backtrace navigation key
+                should be overriden (Optional)
+            tab (bool): Flag indicating if default lateral navigation key
+                should be overriden (Optional)
+        '''
+        self._overrides_enter = enter
+        self._overrides_esc = esc
+        self._overrides_tab = tab
+
 
     def update_timestamp(self):
         ''' Updates timestamp to current date & time '''
@@ -417,7 +465,7 @@ class Widget(metaclass = MetaWidget):
         Gets (x, y) coordinates of this widget relative to its parent.
 
         Returns:
-            2-tuple: x (columns), y (rows)
+            2-tuple: x (int), y (int)
         '''
         sy, sx = self._win.getbegyx()
         py, px = self._parent._win.getbegyx() if self._parent else (0, 0)
@@ -429,7 +477,7 @@ class Widget(metaclass = MetaWidget):
         Gets the width and height of this widget
 
         Returns:
-            2-tuple: width (columns), height (rows)
+            2-tuple: width (int), height (int)
         '''
         height, width = self._win.getmaxyx()
         return width, height
@@ -442,6 +490,9 @@ class Widget(metaclass = MetaWidget):
         Parameters:
             x (int): Relative x-coordinate (Optional)
             y (int): Relative y-coordinate (Optional)
+
+        Returns:
+            Widget: Alias to this widget
         '''
         # Determine the bounds of both this widget and its parent.
         p = self._parent._win if self._parent else curses.newwin(0, 0)
@@ -462,6 +513,8 @@ class Widget(metaclass = MetaWidget):
         # Recursively offset the tree of widgets rooted at this node.
         self._offset_tree(x, y)
 
+        return self
+
 
     def move(self, x = None, y = None):
         '''
@@ -470,6 +523,9 @@ class Widget(metaclass = MetaWidget):
         Parameters:
             x (int): x-coordinate (Optional)
             y (int): y-coordinate (Optional)
+
+        Returns:
+            Widget: Alias to this widget
         '''
         # Determine the coordinates of this widget and its parent.
         p = self._parent._win if self._parent else curses.newwin(0, 0)
@@ -478,11 +534,13 @@ class Widget(metaclass = MetaWidget):
         sy, sx = s.getbegyx()
 
         # Express coordinates as offsets from the current position.
-        x = 0 if x is None else x + px - sx
-        y = 0 if y is None else y + px - sy
+        x = 0 if x is None else x - (sx - px)
+        y = 0 if y is None else y - (sy - py)
 
         # Offset this widget.
         self.offset(x, y)
+
+        return self
 
 
     def resize(self, width = None, height = None):
@@ -492,6 +550,9 @@ class Widget(metaclass = MetaWidget):
         Parameters:
             width (int): Width in columns (Optional)
             height (int): Height in rows (Optional)
+
+        Returns:
+            Widget: Alias to this widget
         '''
         # Determine the bounds of both this widget and its parent.
         p = self._parent._win if self._parent else curses.newwin(0, 0)
@@ -512,8 +573,56 @@ class Widget(metaclass = MetaWidget):
         for child in self._children:
             cy, cx = child._win.getbegyx()
             ch, cw = child._win.getmaxyx()
-            child.move(cx - sx, cy - sy)
             child.resize(cw, ch)
+            child.move(cx - sx, cy - sy)
+
+        return self
+
+
+    def scale(self, width = 0, height = 0):
+        '''
+        Resizes this widget relative to its current dimensions
+
+        Parameters:
+            width (int): Change in width (Optional)
+            height (int): Change in height (Optional)
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        sw, sh = self.get_size()
+        self.resize(max(2, sw + width), max(2, sh + height))
+        return self
+
+
+    def inset(self, factor):
+        '''
+        Scales this widget inward from its current bounds
+
+        Parameters:
+            factor (int): Inset distance in row-heights
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        self.scale(-4 * factor, -2 * factor)
+        self.offset(2 * factor, 1 * factor)
+        return self
+
+
+    def outset(self, factor):
+        '''
+        Scales this widget outward from its current bounds
+
+        Parameters:
+            factor (int): Outset distance in row-heights
+
+        Returns:
+            Widget: Alias to this widget
+        '''
+        self.offset(-2 * factor, -1 * factor)
+        self.scale(4 * factor, 2 * factor)
+        return self
 
 
     def align(self, mode = 'LEFT', cross = False):
@@ -524,6 +633,9 @@ class Widget(metaclass = MetaWidget):
             mode (str): Alignment mode in {'START', 'CENTER', 'END'}
                 (Optional)
             cross (bool): Cross-alignment flag (Optional)
+
+        Returns:
+            Widget: Alias to this widget
         '''
         # Get length along this widget's alignment axis.
         sw, sh = self.get_size()
@@ -545,6 +657,8 @@ class Widget(metaclass = MetaWidget):
         # Move this widget.
         x, y = self.get_position()
         self.move(0, offset) if cross else self.move(offset, 0)
+
+        return self
 
 
     def hide(self):
@@ -683,11 +797,11 @@ class Widget(metaclass = MetaWidget):
         return {'usage': '', 'is_valid': True, 'validation_msg': ''}
 
 
-    def focus(self):
+    def focus(self, **kwargs):
         '''
         * Abstract method for inserting user-defined code into UI framework *
 
-        Executes when this widget gains focus
+        Executes when this widget gains focus; receives optional signal data
         '''
         return
 
@@ -705,7 +819,7 @@ class Widget(metaclass = MetaWidget):
         '''
         * Abstract method for inserting user-defined code into UI framework *
 
-        Defines how to compose signal data from this widget's
+        Defines how to build output signal data
 
         Returns:
             2-tuple: control flag (bool), signal data (dict)
@@ -717,9 +831,21 @@ class Widget(metaclass = MetaWidget):
         '''
         * Abstract method for inserting user-defined code into UI framework *
 
-        Defines how to integrate signal data into this widget
+        Defines how to integrate input signal data into this widget
         '''
         return
+
+
+    def request(self):
+        '''
+        * Abstract method for inserting user-defined code into UI framework *
+
+        Defines how to build request signal data
+
+        Returns:
+            dict: Signal data
+        '''
+        return {}
 
 
     def draw(self):
@@ -741,6 +867,11 @@ class Widget(metaclass = MetaWidget):
             c (int): Character code for user input (Optional)
         '''
         return 'CONTINUE'
+
+
+    def _focus(self, **kwargs):
+        ''' Transfers input focus to this widget in response to a signal '''
+        Widget.set_input_focus(self, **kwargs)
 
 
     def _draw(self):
@@ -812,7 +943,7 @@ class Widget(metaclass = MetaWidget):
                 descendants[i]._label
             )
             for i in range(len(descendants))
-            if descendants[i].audit()
+            if descendants[i]._is_focusable and descendants[i].audit()
         ])
 
         # Include output from overridable report method in status.
@@ -829,12 +960,37 @@ class ContentWidget(Widget):
     Extends base widget in order to provide safe and convenient methods for
     adding content without violating encapsulation of the curses window
     '''
+    @property
+    def content_region(self):
+        '''
+        Creates a group for the valid content region of this widget
+
+        Returns:
+            Group: Valid content region
+        '''
+        region = Group(self)
+        region.inset(1)
+        return region
+
+
     def __init__(self, label, parent, focus_key = None):
         # Initialize inherited state.
         super().__init__(label = label, parent = parent, focus_key = focus_key)
 
         # Initialize attributes.
         self._label_ref = None
+
+        # Setup handlers.
+        self.add_signal_handler('UI_CLEAR', self.clear)
+
+
+    def clear(self, **kwargs):
+        '''
+        * Abstract method for inserting user-defined code into UI framework *
+
+        Defines how to clear content from this widget
+        '''
+        return
 
 
     def draw_border(self,
@@ -911,7 +1067,7 @@ class ContentWidget(Widget):
         win.addch(y_top, x_left, char_top_left)
         win.addch(y_top, x_right, char_top_right)
         win.addch(y_bottom, x_left, char_bottom_left)
-        if y_bottom < height - 1:
+        if offset_bottom > 0 or offset_right > 0:
             win.addch(y_bottom, x_right, char_bottom_right)
         else:
             win.insch(y_bottom, x_right, char_bottom_right)
@@ -923,6 +1079,30 @@ class ContentWidget(Widget):
         win.hline(y_bottom, x_left + 1, char_bottom, border_width - 1)
 
         win.attroff(attr)
+
+
+    def draw_cursor(self, col, row, margin = (0, 0, 0, 0)):
+        '''
+        Renders cursor by reversing the underlying colors
+
+        Parameters:
+            col (int): Column in which to draw cursor
+            row (int): Row in which to draw cursor
+            margin (sequence<int>): Left, right, top, and bottom widget margins
+                (Optional)
+        '''
+        # Determine this widget's dimensions.
+        width, height = self.get_size()
+        effective_width = width - margin[0] - margin[1]
+
+        # Return early if cursor is not within the given margins.
+        if (row < margin[2] or row + margin[2] > height - margin[3]
+            or col < margin[0] or col + margin[1] > width - margin[2]
+        ):
+            return
+
+        # Draw the cursor.
+        self._win.chgat(row, col, 1, self.style('cursor'))
 
 
     def draw_text(self, text, row = 0, padding = (0, 0), margin = (0, 0, 0, 0),
@@ -941,7 +1121,8 @@ class ContentWidget(Widget):
             hint (int): Character to emphasize first occurrence of, if any, in
                 the given text; intended to suggest usage (Optional)
             fit (str): Text fitting option in
-                {'AUTO_SCROLL', 'CLIP_LEFT', 'CLIP_RIGHT', 'WRAP'} (Optional)
+                {'AUTO_SCROLL', 'CLIP_LEFT', 'CLIP_RIGHT', 'NO_WRAP', 'WRAP'}
+                (Optional)
             expand (str): Expansion option for utilizing extra space after text
                 {'NONE', 'LEFT', 'RIGHT', 'AROUND'} (Optional)
             align (str): Text alignment option
@@ -965,7 +1146,7 @@ class ContentWidget(Widget):
         # margins or not enough space is available to fit a single, padded
         # character between the horizontal margins.
         if (row < margin[2]
-            or row + 1 > height - margin[3]
+            or row + margin[2] > height - margin[3]
             or effective_width < 1
         ):
             return 0
@@ -975,13 +1156,14 @@ class ContentWidget(Widget):
             line_list = [self._auto_scroll(text, effective_width)[:]]
 
         # Clip text to be left-aligned on a single line.
-        elif fit == 'CLIP_RIGHT':
+        elif fit in {'CLIP_RIGHT', 'NO_WRAP'}:
             line_list = [text[:effective_width]]
 
             # Indicate clipping with an ellipsis.
-            line = line_list[0]
-            if len(text) > len(line_list[0]):
-                line_list = [(line[:-3] + '...')[:len(line)]]
+            if fit == 'CLIP_RIGHT':
+                line = line_list[0]
+                if len(text) > len(line_list[0]):
+                    line_list = [(line[:-3] + '...')[:len(line)]]
 
         # Shift text to be right-aligned on a single line.
         elif fit == 'CLIP_LEFT':
@@ -1045,9 +1227,9 @@ class ContentWidget(Widget):
 
             # Emphasize first occurrence of given character, provided that this
             # has an ancestor that can receive focus.
-            if (hint and not hinted
+            if (self._ancestor is Widget.input_focus
+                and hint and not hinted
                 and chr(hint) in line.lower()
-                and (self._ancestor and self._ancestor._focus_key)
             ):
                 idx = line.lower().find(chr(hint))
                 win.chgat(row + i, offset + idx, 1, attr | curses.A_UNDERLINE)
@@ -1096,8 +1278,8 @@ class ContentWidget(Widget):
 
 class DatasigTranslator(Widget):
     '''
-    Modifies input, output, and request data signals that pass through this
-    node of the widgets tree
+    Modifies input, output, focus, and request data signals that pass through
+    this node of the widgets tree
 
     Attributes:
         _translation_map (dict): Source-target translation pairs
@@ -1109,10 +1291,14 @@ class DatasigTranslator(Widget):
         # Prevent this widget from being drawn.
         self._is_drawable = False
 
+        # Prevent this widget from receiving input focus.
+        self._is_focusable = False
+
         # Initialize translation map.
         self._translation_map = {
             'INPUT': {},
             'OUTPUT': {'DATASIG_OUT': 'DATASIG_OUT'},
+            'FOCUS': {},
             'REQUEST': {'DATASIG_REQ': 'DATASIG_REQ'}
         }
 
@@ -1145,6 +1331,18 @@ class DatasigTranslator(Widget):
         self._translation_map['OUTPUT'].update(kwargs)
 
 
+    def map_focus(self, signame, **kwargs):
+        '''
+        Adds given terms to the focus translation map
+
+        Parameters:
+            signame (str): Source signal name
+            **kwargs: Source (keyword) to target (argument) translation pairs
+        '''
+        self.add_signal_handler(signame, self._translate_focus)
+        self._translation_map['FOCUS'].update(kwargs)
+
+
     def map_request(self, signame, **kwargs):
         '''
         Adds given terms to the request translation map
@@ -1163,7 +1361,7 @@ class DatasigTranslator(Widget):
 
         Parameters:
             section (str): Section of translation map in
-                {'INPUT', 'OUTPUT', 'REQUEST'}
+                {'INPUT', 'OUTPUT', 'FOCUS', 'REQUEST'}
             data (dict): Data to translate
 
         Returns:
@@ -1191,7 +1389,7 @@ class DatasigTranslator(Widget):
         data = self._translate_data('INPUT', kwargs)
 
         # Emit translated input signal.
-        signal = signals.Signal(signame, data)
+        signal = signals.Signal(signame, data, False)
         self.flush(**signal.data)
 
 
@@ -1211,6 +1409,24 @@ class DatasigTranslator(Widget):
         # Emit translated output signal.
         signal = signals.Signal(signame, data, signame != 'DATASIG_OUT')
         self.bubble(**signal.data)
+
+
+    def _translate_focus(self, **kwargs):
+        '''
+        Translates a focus signal and flushes the result
+
+        Parameters:
+            **kwargs: Expanded signal data
+        '''
+        # Translate input signal's name.
+        signame = 'DATASIG_FOCUS'
+
+        # Translate data carried by focus signal.
+        data = self._translate_data('FOCUS', kwargs)
+
+        # Emit translated focus signal.
+        signal = signals.Signal(signame, data, False)
+        self.flush(**signal.data)
 
 
     def _translate_request(self, **kwargs):
@@ -1236,21 +1452,37 @@ class Form(Widget):
     Consolidates multiple "DATASIG_OUT" signals
 
     Attributes:
+        _defaults (dict): Default form data
         _data (dict): Collective data from one or more signals
     '''
     def __init__(self, parent, **kwargs):
         # Initialize inherited state.
-        super().__init__('Translator', parent = parent)
+        super().__init__('Form', parent = parent)
 
         # Prevent this widget from being drawn.
         self._is_drawable = False
 
+        # Prevent this widget from receiving input focus.
+        self._is_focusable = False
+
         # Setup signal handling.
+        self.add_signal_handler('UI_CLEAR_FORM', self._clear)
         self.add_signal_handler('DATASIG_OUT', self._consolidate)
         self.add_signal_handler('UI_SUBMIT', self._submit)
 
         # Initialize attributes.
-        self._data = kwargs
+        self._defaults = kwargs
+        self._data = kwargs.copy()
+
+
+    def _clear(self, **kwargs):
+        ''' Clears content from descendant widgets '''
+        # Clear form.
+        self._data = self._defaults.copy()
+
+        # Clear form inputs.
+        signal = signals.Signal('UI_CLEAR')
+        self.flush(**signal.data)
 
 
     def _consolidate(self, **kwargs):
@@ -1262,3 +1494,16 @@ class Form(Widget):
         ''' Submits consolidated signal data '''
         signal = signals.Signal('DATASIG_OUT', self._data, False)
         self.bubble(**signal.data)
+
+
+class Group(Widget):
+    ''' Container for grouping widgets '''
+    def __init__(self, parent, **kwargs):
+        # Initialize inherited state.
+        super().__init__('Group', parent = parent)
+
+        # Prevent this widget from being drawn.
+        self._is_drawable = False
+
+        # Prevent this widget from receiving input focus.
+        self._is_focusable = False
