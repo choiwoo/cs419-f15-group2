@@ -1,6 +1,6 @@
 # Filename: signals.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Tue 17 Nov 2015 06:54:11 PM MST
+# Last Modified: Wed 18 Nov 2015 07:39:00 PM MST
 # Author: Brett Fedack
 
 
@@ -26,7 +26,7 @@ class Signal():
             propagate (bool): _propagate attribute initializer (Optional)
         '''
         self._name = name
-        self._data = data
+        self._data = data if data else {}
         self._propagate = propagate
 
         # Include all other keyword arguments in carried data.
