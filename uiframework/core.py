@@ -1,6 +1,6 @@
 # Filename: core.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Wed 18 Nov 2015 04:29:27 PM MST
+# Last Modified: Thu 19 Nov 2015 11:05:07 PM MST
 # Author: Brett Fedack
 
 
@@ -1146,7 +1146,7 @@ class ContentWidget(Widget):
         # margins or not enough space is available to fit a single, padded
         # character between the horizontal margins.
         if (row < margin[2]
-            or row + margin[2] > height - margin[3]
+            or row > height - margin[3] - 1
             or effective_width < 1
         ):
             return 0
