@@ -1,6 +1,6 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Wed 18 Nov 2015 12:28:19 AM MST
+# Last Modified: Thu 19 Nov 2015 11:38:03 PM MST
 # Author: Brett Fedack
 
 
@@ -869,7 +869,7 @@ class TextBox(Labeled):
 
         # Draw lines of text.
         line_list = self._build_line_list()
-        for i in range(len(line_list[row_scroll:])):
+        for i in range(min(len(line_list[row_scroll:]), effective_height)):
             line = line_list[i + row_scroll]
             self.draw_text(line[col_scroll:], row = i + margin[2], margin = margin, fit = 'NO_WRAP')
 
@@ -879,32 +879,31 @@ class TextBox(Labeled):
             self.draw_cursor(col_offset + margin[0] - col_scroll, row_offset + margin[2] - row_scroll, margin = margin)
 
         # Indicate if content exists outside of the visible region.
-        if Widget.input_focus is self:
-            attr = self.style('border')
-            padding = (1, 1)
-            center_row = math.ceil(height / 2) - 1
+        attr = self.style('border')
+        padding = (1, 1)
+        center_row = math.ceil(height / 2) - 1
 
-            # Indicate content before.
-            if col_scroll > 0:
-                left_arrow = u'\u25C0'
-                self.draw_text(left_arrow, row = center_row, align = 'LEFT', attr = attr)
+        # Indicate content before.
+        if col_scroll > 0:
+            left_arrow = u'\u25C0'
+            self.draw_text(left_arrow, row = center_row, align = 'LEFT', attr = attr)
 
-            # Indicate content after.
-            num_cols = max([len(i) for i in text.splitlines() or [text]])
-            if col_scroll < num_cols - effective_width:
-                right_arrow = u'\u25B6'
-                self.draw_text(right_arrow, row = center_row, margin = (width - 2, 0, 0, 0), attr = attr)
+        # Indicate content after.
+        num_cols = max([len(i) for i in text.splitlines() or [text]])
+        if col_scroll < num_cols - effective_width:
+            right_arrow = u'\u25B6'
+            self.draw_text(right_arrow, row = center_row, margin = (width - 2, 0, 0, 0), attr = attr)
 
-            # Indicate content above.
-            if row_scroll > 0:
-                up_arrow = u'\u25B2'
-                self.draw_text(up_arrow, padding = padding, align = 'CENTER', attr = attr)
+        # Indicate content above.
+        if row_scroll > 0:
+            up_arrow = u'\u25B2'
+            self.draw_text(up_arrow, padding = padding, align = 'CENTER', attr = attr)
 
-            # Indicate content below.
-            num_rows = len(line_list)
-            if row_scroll < num_rows - effective_height:
-                down_arrow = u'\u25BC'
-                self.draw_text(down_arrow, row = height - 1, padding = padding, align = 'CENTER', attr = attr)
+        # Indicate content below.
+        num_rows = len(line_list)
+        if row_scroll < num_rows - effective_height:
+            down_arrow = u'\u25BC'
+            self.draw_text(down_arrow, row = height - 1, padding = padding, align = 'CENTER', attr = attr)
 
 
     def operate(self, c):
@@ -1430,3 +1429,200 @@ class SelectField(Labeled):
         self._options.extend(options)
         if self._expanded:
             self.expand()
+
+
+class Table(Labeled):
+    '''
+    Display widget for tabulated data
+
+    Parameters:
+        _header (list<str>): Column names for tabulated data
+        _body (list<str>): Rows of tabulated data
+        _col_widths (list<int>): Span of each column in characters
+        _col_scroll (int): Index corresponding to left of viewable region
+        _row_scroll (int): Index corresponding to top of viewable region
+    '''
+    def __init__(self, label, parent, focus_key = None):
+        # Initialize inherited state.
+        super().__init__(label, parent, focus_key)
+
+        # Initialize attributes.
+        self.clear()
+
+        pp = '''\
++------------+----------+------+-----+---------+----------------+
+| Field      | Type     | Null | Key | Default | Extra          |
++------------+----------+------+-----+---------+----------------+
+| Id         | int(11)  | NO   | PRI | NULL    | auto_increment |
+| Name       | char(35) | NO   |     |         |                |
+| Country    | char(3)  | NO   | UNI |         |                |
+| District   | char(20) | YES  | MUL |         |                |
+| Population | int(11)  | NO   |     | 0       |                |
++------------+----------+------+-----+---------+----------------+\
+'''
+        signal = signals.Signal('DATASIG_IN', pretty_print = pp)
+        self._signal_router.forward(signal)
+
+
+    def clear(self, **kwargs):
+        self._header = []
+        self._body = []
+        self._col_widths = []
+        self._col_scroll = 0
+        self._row_scroll = 0
+
+
+    def report(self):
+        return {'usage': 'Up/Down/Left/Right/PgUp/PgDn: Scroll'}
+
+
+    def decompose(self, table = [], pretty_print = '', **kwargs):
+        self.clear()
+
+        # Parse ASCII "Pretty Print" text, if available.
+        if pretty_print:
+            table = [
+                [item.strip() for item in row.split('|')[1:-1]]
+                for row in pretty_print.splitlines()
+                if row[0] == '|'
+            ]
+
+        # Separate table data into header and body sections.
+        self._header = table[0]
+        self._body = table[1:]
+
+        # Calculate the maximum width of each column.
+        self._col_widths = [
+            max([len(row[i]) + 4 for row in table])
+            for i in range(len(self._header))
+        ]
+        self._col_widths[-1] -= 4
+
+        # Validate received data.
+        header_len = len(self._header)
+        for row in self._body:
+
+            # Clear table data, and indicate error.
+            if len(row) != header_len:
+                self.clear()
+                signal = signals.Signal(
+                    'UI_FEEDBACK',
+                    message = 'Mismatch between table header & body column counts',
+                    error = True
+                )
+                self.bubble(**signal.data)
+                break;
+
+
+    def draw(self):
+        width, height = self.get_size()
+        margin = [2, 3, 1, 1]
+        effective_width = width - margin[0] - margin[1]
+        effective_height = height - margin[2] - margin[3] - 2
+        header = self._header
+        body = self._body
+        col_widths = self._col_widths
+        col_scroll = self._col_scroll
+        row_scroll = self._row_scroll
+
+        # Draw border around both the table and header section.
+        self.draw_border(offset_right = 1)
+        self.draw_border(
+            offset_bottom = height - 3, offset_right = 1,
+            char_bottom_left = curses.ACS_LTEE, char_bottom_right = curses.ACS_RTEE
+        )
+
+        # Draw the table header.
+        line = ''.join([
+            '{:<{}}'.format(header[i], col_widths[i])
+            for i in range(len(header))
+        ])
+        self.draw_text(line[col_scroll:], row = margin[2], margin = margin, fit = 'NO_WRAP')
+        margin[2] += 2
+
+        # Draw the table body.
+        for i in range(min(len(body[row_scroll:]), effective_height)):
+            line = ''.join([
+                '{:<{}}'.format(body[i + row_scroll][j], col_widths[j])
+                for j in range(len(body[i + row_scroll]))
+            ])
+            self.draw_text(line[col_scroll:], row = margin[2], margin = margin, fit = 'NO_WRAP')
+            margin[2] += 1
+
+        # Indicate if content exists outside of the visible region.
+        attr = self.style('border')
+        padding = (1, 1)
+        center_row = math.ceil(height / 2) - 1
+
+        # Indicate content before.
+        if col_scroll > 0:
+            left_arrow = u'\u25C0'
+            self.draw_text(left_arrow, row = center_row, align = 'LEFT', attr = attr)
+
+        # Indicate content after.
+        if col_scroll < sum(col_widths) - effective_width:
+            right_arrow = u'\u25B6'
+            self.draw_text(right_arrow, row = center_row, margin = (width - 2, 0, 0, 0), attr = attr)
+
+        # Indicate content above.
+        if row_scroll > 0:
+            up_arrow = u'\u25B2'
+            self.draw_text(up_arrow, padding = padding, align = 'CENTER', attr = attr)
+
+        # Indicate content below.
+        if row_scroll < len(body) - effective_height:
+            down_arrow = u'\u25BC'
+            self.draw_text(down_arrow, row = height - 1, padding = padding, align = 'CENTER', attr = attr)
+
+
+    def operate(self, c):
+        margin = [2, 3, 3, 1]
+        width, height = self.get_size()
+        effective_width = width - margin[0] - margin[1]
+        effective_height = height - margin[2] - margin[3]
+        body = self._body
+        col_widths = self._col_widths
+        col_scroll = self._col_scroll
+        row_scroll = self._row_scroll
+        scroll_sensitivity = 1
+
+        # Scroll left.
+        if c == curses.KEY_LEFT:
+            self.tag_redraw()
+            self._col_scroll = max(0, col_scroll - 2 * scroll_sensitivity)
+
+        # Scroll right.
+        elif c == curses.KEY_RIGHT:
+            self.tag_redraw()
+            self._col_scroll = min(
+                col_scroll + 2 * scroll_sensitivity,
+                max(0, sum(col_widths) - effective_width)
+            )
+
+        # Scroll up.
+        elif c == curses.KEY_UP:
+            self.tag_redraw()
+            self._row_scroll = max(0, row_scroll - 1 * scroll_sensitivity)
+
+        # Scroll down.
+        elif c == curses.KEY_DOWN:
+            self.tag_redraw()
+            self._row_scroll = min(
+                row_scroll + 1 * scroll_sensitivity,
+                max(0, len(self._body) - effective_height)
+            )
+
+        # Scroll up a full page.
+        elif c == curses.KEY_PPAGE:
+            self.tag_redraw()
+            self._row_scroll = max(0, row_scroll - effective_height * scroll_sensitivity)
+
+        # Scroll down a full page.
+        elif c == curses.KEY_NPAGE:
+            self.tag_redraw()
+            self._row_scroll = min(
+                row_scroll + effective_height * scroll_sensitivity,
+                max(0, len(self._body) - effective_height)
+            )
+
+        return 'CONTINUE'
