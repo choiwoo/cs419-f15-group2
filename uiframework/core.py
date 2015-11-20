@@ -1,6 +1,6 @@
 # Filename: core.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Thu 19 Nov 2015 11:05:07 PM MST
+# Last Modified: Fri 20 Nov 2015 12:05:52 AM MST
 # Author: Brett Fedack
 
 
@@ -268,8 +268,7 @@ class MetaWidget(type):
                 previous_focus.bubble(**signal.data)
 
             # Emit a signal requesting data for the new input focus.
-            signal = signals.Signal('DATASIG_REQ', {}, False)
-            new_focus.bubble(**signal.data)
+            new_focus.request()
 
 
     @property
@@ -766,6 +765,12 @@ class Widget(metaclass = MetaWidget):
         return handled
 
 
+    def request(self, **kwargs):
+        ''' Bubbles a request for input data '''
+        signal = signals.Signal('DATASIG_REQ', propagate = False)
+        self.bubble(**signal.data)
+
+
     def tag_redraw(self):
         ''' Marks this widget to be redrawn during the next draw call '''
         self._is_tagged = True
@@ -834,18 +839,6 @@ class Widget(metaclass = MetaWidget):
         Defines how to integrate input signal data into this widget
         '''
         return
-
-
-    def request(self):
-        '''
-        * Abstract method for inserting user-defined code into UI framework *
-
-        Defines how to build request signal data
-
-        Returns:
-            dict: Signal data
-        '''
-        return {}
 
 
     def draw(self):
