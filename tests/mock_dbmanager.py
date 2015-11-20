@@ -1,6 +1,6 @@
 # Filename: mock_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Wed 18 Nov 2015 01:18:20 AM MST
+# Last Modified: Fri 20 Nov 2015 02:23:26 PM MST
 # Author: Brett Fedack
 
 
@@ -20,7 +20,7 @@ mock_databases = {
         'Car', 'Make', 'Model', 'Employee', 'Customer', 'Order'
     ]
 }
-mock_table_contents = [
+mock_table_content = [
     ['Id', 'First Name', 'Surname',  'DoB'       ],
     [1,    'Linus',      'Torvalds', '1969-12-28'],
     [2,    'Richard',    'Stallman', '1953-03-16'],
@@ -35,6 +35,19 @@ mock_table_structure = [
     ['Surname',    'varchar(20)', 'NO',   '',    '',           ''              ],
     ['DoB',        'date',        'NO',   '',    '0000-00-00', ''              ],
 ]
+mock_pretty_print = '''\
++-----------+------+------------+-----------------+
+| City name | Area | Population | Annual Rainfall |
++-----------+------+------------+-----------------+
+| Adelaide  | 1295 |  1158259   |      600.5      |
+| Brisbane  | 5905 |  1857594   |      1146.4     |
+| Darwin    | 112  |   120900   |      1714.7     |
+| Hobart    | 1357 |   205556   |      619.5      |
+| Sydney    | 2058 |  4336374   |      1214.8     |
+| Melbourne | 1566 |  3806092   |      646.9      |
+| Perth     | 5386 |  1554769   |      869.4      |
++-----------+------+------------+-----------------+\
+'''
 mock_raw_query_result ='''\
 HAL: Good afternoon, gentlemen.
 
@@ -107,6 +120,8 @@ class DatabaseManager():
         self._add_signal_handler('DB_LIST_TABLES', self.list_tables)
         self._add_signal_handler('DB_SET_DATABASE', self.set_database)
         self._add_signal_handler('DB_SET_TABLE', self.set_table)
+        self._add_signal_handler('DB_TABLE_CONTENT', self.list_table_content)
+        self._add_signal_handler('DB_TABLE_STRUCTURE', self.list_table_structure)
         self._add_signal_handler('DB_RAW_QUERY', self.query_raw)
 
 
@@ -306,6 +321,7 @@ class DatabaseManager():
         self._database_curr = database
 
         # Inform system of success.
+        self._emit('UI_SET_DATABASE', database = database)
         self._emit_success('"{}" set as current database'.format(database))
 
         return True
@@ -346,6 +362,7 @@ class DatabaseManager():
         self._table_curr = table
 
         # Inform the system of success.
+        self._emit('UI_SET_TABLE', table = table)
         self._emit_success('"{}" set as current table'.format(table))
 
         return True
@@ -402,7 +419,7 @@ class DatabaseManager():
         return table_list
 
 
-    def list_table_contents(self, **kwargs):
+    def list_table_content(self, **kwargs):
         '''
         Queries current table for a listing of its contents
 
@@ -424,12 +441,12 @@ class DatabaseManager():
 
         # Acquire a listing of the current table's contents.
         # TODO: Peewee stuff
-        table_contents = mock_table_contents
+        table_content = mock_table_content
 
         # Transmit table contents.
-        self._emit('UI_TABLE_CONTENTS', table_contents = table_contents)
+        self._emit('UI_TABLE_CONTENT', table_content = table_content)
 
-        return table_contents
+        return table_content
 
 
     def list_table_structure(self, **kwargs):
