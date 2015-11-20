@@ -1,6 +1,6 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Thu 19 Nov 2015 11:38:03 PM MST
+# Last Modified: Fri 20 Nov 2015 02:16:18 PM MST
 # Author: Brett Fedack
 
 
@@ -1449,20 +1449,6 @@ class Table(Labeled):
         # Initialize attributes.
         self.clear()
 
-        pp = '''\
-+------------+----------+------+-----+---------+----------------+
-| Field      | Type     | Null | Key | Default | Extra          |
-+------------+----------+------+-----+---------+----------------+
-| Id         | int(11)  | NO   | PRI | NULL    | auto_increment |
-| Name       | char(35) | NO   |     |         |                |
-| Country    | char(3)  | NO   | UNI |         |                |
-| District   | char(20) | YES  | MUL |         |                |
-| Population | int(11)  | NO   |     | 0       |                |
-+------------+----------+------+-----+---------+----------------+\
-'''
-        signal = signals.Signal('DATASIG_IN', pretty_print = pp)
-        self._signal_router.forward(signal)
-
 
     def clear(self, **kwargs):
         self._header = []
@@ -1477,6 +1463,7 @@ class Table(Labeled):
 
 
     def decompose(self, table = [], pretty_print = '', **kwargs):
+        self.tag_redraw()
         self.clear()
 
         # Parse ASCII "Pretty Print" text, if available.
@@ -1493,7 +1480,7 @@ class Table(Labeled):
 
         # Calculate the maximum width of each column.
         self._col_widths = [
-            max([len(row[i]) + 4 for row in table])
+            max([len(str(row[i])) + 4 for row in table])
             for i in range(len(self._header))
         ]
         self._col_widths[-1] -= 4
