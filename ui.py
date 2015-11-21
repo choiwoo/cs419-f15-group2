@@ -1,12 +1,16 @@
 # Filename: ui.py
 # Creation Date: Thu 05 Nov 2015
-# Last Modified: Mon 09 Nov 2015 04:52:57 PM MST
+# Last Modified: Fri 20 Nov 2015 11:37:36 PM MST
 # Author: Brett Fedack
 
 
 from uiframework import (
-    UI, Widget, DatasigTranslator, Form,
-    Button, NumericField, SelectField, StatusLine, Tab, Text, TextField
+    signals,
+
+    UI, Widget, DatasigTranslator, Form, Group,
+
+    Button, FlipSwitch, NavList, NumericField, SelectField, StatusLine, Tab,
+    Table, Text, TextBox, TextField, VertTab
 )
 
 
@@ -46,7 +50,7 @@ violet = (0.67, 0.33, 1.0)
 theme = {
     'default': {
         'border': (light, dark),
-        'cursor': (dark, dark),
+        'cursor': (light, dark),
         'error': (red, dark),
         'fill': (dark, dark),
         'highlight': (light, dark),
@@ -78,7 +82,7 @@ theme = {
     },
     'disabled': {
         'border': (medium, dark),
-        'cursor': (dark, dark),
+        'cursor': (medium, dark),
         'error': (medium, dark),
         'fill': (dark, dark),
         'highlight': (medium, dark),
@@ -116,6 +120,11 @@ def build_ui(signal_router = None):
     root.add_signal_handler('UI_FEEDBACK', root.flush)
     root.add_signal_handler('UI_DATABASE_LIST', root.flush)
     root.add_signal_handler('UI_TABLE_LIST', root.flush)
+    root.add_signal_handler('UI_SET_DATABASE', root.flush)
+    root.add_signal_handler('UI_SET_TABLE', root.flush)
+    root.add_signal_handler('UI_TABLE_CONTENT', root.flush)
+    root.add_signal_handler('UI_TABLE_STRUCTURE', root.flush)
+    root.add_signal_handler('UI_RAW_QUERY', root.flush)
 
     home = build_home_tab(root)
     server = build_server_tab(root)
@@ -154,8 +163,8 @@ def build_home_tab(parent):
 
     form = Form(
         translator,
-        prompt = 'Are you sure you want to exit? Long messages auto scroll like a news crawler.',
-        sigconfirm = 'UI_EXIT'
+        prompt = 'Are you sure you want to exit?',
+        sigconfirm = signals.Signal('UI_EXIT')
     )
 
     translator = DatasigTranslator(form)
@@ -200,6 +209,7 @@ def build_server_tab(parent):
     hostname.resize(width = input_field_size)
     hostname.align('CENTER')
     hostname.offset(*offset)
+    hostname.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
     translator.map_output('DATASIG_OUT', number = 'port')
@@ -209,6 +219,7 @@ def build_server_tab(parent):
     port.align('CENTER')
     port.move(y = 3)
     port.offset(*offset)
+    port.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
     translator.map_output('DATASIG_OUT', text = 'username')
@@ -218,6 +229,7 @@ def build_server_tab(parent):
     username.align('CENTER')
     username.move (y = 6)
     username.offset(*offset)
+    username.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
     translator.map_output('DATASIG_OUT', text = 'password')
@@ -228,6 +240,7 @@ def build_server_tab(parent):
     password.move (y = 9)
     password.offset(*offset)
     password.obscure()
+    password.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
     translator.map_output('UI_SUBMIT')
@@ -261,30 +274,27 @@ def build_database_tab(parent):
     database = Tab('Database', parent, ord('d'))
     database.resize(height = 22)
 
-    translator = DatasigTranslator(database)
+    tab_group = Group(database)
+    tab_group.scale(-4, -4).offset(2, 3)
+
+    select_tab = VertTab('General', tab_group, ord('g'))
+    import_tab = VertTab('Import', tab_group, ord('i'))
+    export_tab = VertTab('Export', tab_group, ord('e'))
+
+    select_tab_group = select_tab.content_region
+    import_tab_group = import_tab.content_region
+    export_tab_group = export_tab.content_region
+
+    translator = DatasigTranslator(select_tab_group)
     translator.map_input('UI_DATABASE_LIST', databases = 'options')
     translator.map_output('DB_SET_DATABASE', option = 'database')
     translator.map_request('DB_LIST_DATABASES')
 
-    select_database = SelectField('Select Database', translator, ord('s'))
-    select_database.auto_expand()
-    select_database.limit_options(5)
-    select_database.resize(width = 30)
-    select_database.align('CENTER')
-    select_database.offset(y = 3)
-
-    commands = SelectField('Commands', database, ord('c'))
-    commands.auto_expand()
-    commands.limit_options(5)
-    commands.resize(width = 30)
-    commands.align('CENTER')
-    commands.offset(y = 6)
-    commands.load_options([
-        'Create',
-        'Delete',
-        'Import',
-        'Export'
-    ])
+    database_list = SelectField('Database List', translator, ord('d'))
+    database_list.auto_expand()
+    database_list.resize(width = 30)
+    database_list.align('CENTER')
+    database_list.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     return database
 
@@ -301,29 +311,46 @@ def build_table_tab(parent):
     '''
     table = Tab('Table', parent, ord('t'))
     table.resize(height = 22)
+    table_group = table.content_region
 
-    translator = DatasigTranslator(table)
+    translator = DatasigTranslator(table_group)
     translator.map_input('UI_TABLE_LIST', tables = 'options')
     translator.map_output('DB_SET_TABLE', option = 'table')
     translator.map_request('DB_LIST_TABLES')
 
-    select_tables = SelectField('Select Table', translator, ord('s'))
-    select_tables.auto_expand()
-    select_tables.limit_options(5)
-    select_tables.resize(width = 30)
-    select_tables.align('CENTER')
-    select_tables.offset(y = 3)
+    table_list = SelectField('Table List', translator, ord('t'))
+    table_list.auto_expand()
+    table_list.limit_options(5)
+    table_list.resize(width = 30)
+    table_list.align('CENTER')
+    table_list.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
-    commands = SelectField('Commands', table, ord('c'))
-    commands.auto_expand()
-    commands.limit_options(5)
-    commands.resize(width = 30)
-    commands.align('CENTER')
-    commands.offset(y = 6)
-    commands.load_options([
-        'View Content',
-        'View Schema'
-    ])
+    tab_group = table.content_region.scale(height = -3).offset(y = 3)
+
+    content_tab = VertTab('Content', tab_group, ord('c'))
+    structure_tab = VertTab('Structure', tab_group, ord('s'))
+
+    content_tab_group = content_tab.content_region
+    content_tab_group.outset(1).scale(width = -2).offset(x = 2)
+
+    structure_tab_group = structure_tab.content_region
+    structure_tab_group.outset(1).scale(width = -2).offset(x = 2)
+
+    translator = DatasigTranslator(content_tab_group)
+    translator.map_input('UI_TABLE_CONTENT', table_content = 'table')
+    translator.map_request('DB_TABLE_CONTENT')
+
+    table_content = Table('Inspect Table', translator, ord('i'))
+    table_content.linked_label.hide()
+    table_content.add_signal_handler('UI_SET_TABLE', table_content.request)
+
+    translator = DatasigTranslator(structure_tab_group)
+    translator.map_input('UI_TABLE_STRUCTURE', table_structure = 'table')
+    translator.map_request('DB_TABLE_STRUCTURE')
+
+    table_structure = Table('Inspect Table', translator, ord('i'))
+    table_structure.linked_label.hide()
+    table_structure.add_signal_handler('UI_SET_TABLE', table_structure.request)
 
     return table
 
@@ -340,4 +367,49 @@ def build_sql_tab(parent):
     '''
     sql = Tab('SQL', parent, ord('q'))
     sql.resize(height = 22)
+
+    input_group = sql.content_region
+    input_group.scale(width = -38)
+
+    translator = DatasigTranslator(input_group)
+    translator.map_output('DB_RAW_QUERY', text = 'raw')
+
+    form = Form(translator, text = '')
+
+    text_in = TextBox('Input', form, ord('i'))
+    text_in.scale(height = -2)
+    text_in.linked_label.embellish(' ', ' ').offset(x = 2)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('UI_SUBMIT')
+
+    submit = Button('Submit', translator, ord('s'))
+    submit.move(y = 16)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('UI_CLEAR_FORM')
+
+    reset = Button('Reset', translator, ord('r'))
+    reset.move(x = 12, y = 16)
+
+    output_group = sql.content_region
+    output_group.scale(width = -38).offset(x = 38)
+
+    form = Form(output_group)
+
+    translator = DatasigTranslator(form)
+    translator.map_input('UI_RAW_QUERY', result = 'text')
+    translator.map_focus('UI_RAW_QUERY')
+
+    text_out = TextBox('Output', translator, ord('o'))
+    text_out.read_only()
+    text_out.scale(height = -2)
+    text_out.linked_label.embellish(' ', ' ').offset(x = 2)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('UI_CLEAR_FORM')
+
+    clear = Button('Clear', translator, ord('c'))
+    clear.move(y = 16)
+
     return sql
