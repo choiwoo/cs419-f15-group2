@@ -9,7 +9,7 @@ from uiframework import signals
 #import signals
 import psycopg2
 
-
+# NOTE: unit tests have not been thoroughly done.
 
 # NOTE: By convention, signals with "UI_" prefix are sent to the user
 # interface, and those with "DB_" prefix are received by this component.
@@ -338,7 +338,7 @@ class DatabaseManager():
         '''
         # NOTE: Mock databases are stored as a global.
         # Testing
-        print("starting set_database")
+        #print("starting set_database")
         # Unset database if unspecified.
         if database is None:
             self._database_curr = None
@@ -424,7 +424,7 @@ class DatabaseManager():
 
         # Set the table.
         self._table_curr = table
-        print(self._table_curr)
+        #print(self._table_curr)
 
         # Inform the system of success.
         self._emit('UI_SET_TABLE', table = table)
@@ -594,6 +594,11 @@ class DatabaseManager():
 
         # Transmit table structure.
 #        self._emit('UI_TABLE_STRUCTURE', table_structure = table_structure)
+
+        table_structure = mock_table_structure
+
+        # Transmit table structure.
+        self._emit('UI_TABLE_STRUCTURE', table_structure = table_structure)
 
         return table_structure
 
