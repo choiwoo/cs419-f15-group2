@@ -4,9 +4,9 @@
 # Author: Brett Fedack, Woo Choi
 
 
-from uiframework import signals
+#from uiframework import signals
 # for Testing
-#import signals
+import signals
 import psycopg2
 
 # NOTE: unit tests have not been thoroughly done.
@@ -16,42 +16,7 @@ import psycopg2
 
 
 # Mock Data
-mock_databases = {
-    'Book Store': [
-        'Book', 'Genre', 'Author', 'Customer', 'Publisher', 'Inventory'
-    ],
-    'Car Dealership': [
-        'Car', 'Make', 'Model', 'Employee', 'Customer', 'Order'
-    ]
-}
-mock_table_content = [
-    ['Id', 'First Name', 'Surname',  'DoB'       ],
-    [1,    'Linus',      'Torvalds', '1969-12-28'],
-    [2,    'Richard',    'Stallman', '1953-03-16'],
-    [3,    'Bill',       'Gates',    '1955-10-28'],
-    [4,    'Steve',      'Jobs',     '1955-02-24'],
-    [5,    'Steve',      'Wozniak',  '1950-08-11']
-]
-mock_table_structure = [
-    ['Field',      'Type',        'Null', 'Key', 'Default',    'Extra'         ],
-    ['Id',         'int(11)',     'NO',   'PRI', 'NULL',       'auto_increment'],
-    ['First Name', 'varchar(20)', 'NO',   '',    '',           ''              ],
-    ['Surname',    'varchar(20)', 'NO',   '',    '',           ''              ],
-    ['DoB',        'date',        'NO',   '',    '0000-00-00', ''              ],
-]
-mock_pretty_print = '''\
-+-----------+------+------------+-----------------+
-| City name | Area | Population | Annual Rainfall |
-+-----------+------+------------+-----------------+
-| Adelaide  | 1295 |  1158259   |      600.5      |
-| Brisbane  | 5905 |  1857594   |      1146.4     |
-| Darwin    | 112  |   120900   |      1714.7     |
-| Hobart    | 1357 |   205556   |      619.5      |
-| Sydney    | 2058 |  4336374   |      1214.8     |
-| Melbourne | 1566 |  3806092   |      646.9      |
-| Perth     | 5386 |  1554769   |      869.4      |
-+-----------+------+------------+-----------------+\
-'''
+
 mock_raw_query_result ='''\
 HAL: Good afternoon, gentlemen.
 
@@ -349,10 +314,6 @@ class DatabaseManager():
         if not self._connected:
             self._emit_error('Not connected to a server')
             return False
-        # DB Class has not been implemented yet
-#        if not database in mock_databases: # TODO: Peewee stuff
-#            self._emit_error('"{}" database not found on server'.format(database))
-#            return False
 
         # First disconnect from current connection
         if self._database_state:
@@ -415,12 +376,6 @@ class DatabaseManager():
         if not self._database_curr:
             self._emit_error('No database selected')
             return False
-#        DB CLASS not yet implemented
-#        if not table in mock_databases[self._database_curr]: # TODO: Peewee stuff
-#            self._emit_error('"{}" table not found in "{}" database'.format(
-#                table, self._database_curr
-#            ))
-#            return False
 
         # Set the table.
         self._table_curr = table
@@ -487,18 +442,24 @@ class DatabaseManager():
         if not self._database_curr:
             self._emit_error('No database selected')
             return []
+        if not self._database_state:
+            self._emit_error('No connection to database')
+            return []
 
         # Acquire a listing of tables in the current database.
+        try:
+            cursor = self._database_state.cursor()
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+            records = cursor.fetchall()
 
-        cursor = self._database_state.cursor()
-        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
-        records = cursor.fetchall()
+            # Converting to acceptable format
+            table_list = [i[0] for i in records]
 
-        # Converting to acceptable format
-        table_list = [i[0] for i in records]
-
-        #print(table_list)
-        cursor.close()
+            #print(table_list)
+            cursor.close()
+        except:
+            self._emit_error('Error while executing table list')
+            return []
 
         # Transmit table list.
         self._emit('UI_TABLE_LIST', tables = table_list)
@@ -520,44 +481,44 @@ class DatabaseManager():
         if not self._table_curr:
             self._emit_error('No table selected')
             return []
-
-#        DB class has not been implented yet
-#        if not self._table_curr in mock_databases[self._database_curr]: # TODO: Peewee stuff
-#            self._emit_error('"{}" table not found in "{}" database'.format(
-#                self._table_curr, self._database_curr
-#            ))
-#            return []
+        if not self._database_state:
+            self._emit_error('No connection to database')
+            return []
 
         # Acquire a listing of the current table's contents.
+        try:
+            cursor = self._database_state.cursor()
 
-        cursor = self._database_state.cursor()
+            # Get row headers
+            cursor_str = "SELECT column_name FROM information_schema.columns WHERE table_name=\'%s\'"%(self._table_curr)
+            cursor.execute(cursor_str)
+            records = cursor.fetchall()
 
-        # Get row headers
-        cursor_str = "SELECT column_name FROM information_schema.columns WHERE table_name=\'%s\'"%(self._table_curr)
-        cursor.execute(cursor_str)
-        records = cursor.fetchall()
+            # Convert to acceptable list
+            table_column = [i[0] for i in records]
 
-        # Convert to acceptable list
-        table_column = [i[0] for i in records]
+            # Get rows
+            cursor_str = "SELECT * FROM %s"%(self._table_curr)
+            cursor.execute(cursor_str)
+            records = cursor.fetchall()
 
-        # Get rows
-        cursor_str = "SELECT * FROM %s"%(self._table_curr)
-        cursor.execute(cursor_str)
-        records = cursor.fetchall()
-
-        # Combine row headers and rows
-        table_content = [table_column] + records
-        # print(table_content)
-
-        # close cursor
-        cursor.close()
+            # Combine row headers and rows
+            table_content = [table_column] + records
+            # print(table_content)
+            #print("table_content:")
+            #print(table_content)
+            # close cursor
+            cursor.close()
+        except:
+            self._emit_error('Error while querying table content')
+            return []
 
         # Transmit table contents.
         self._emit('UI_TABLE_CONTENT', table_content = table_content)
 
         return table_content
 
-    # Not coded
+
     def list_table_structure(self, **kwargs):
         '''
         Queries current table for a listing of its structure
@@ -572,30 +533,30 @@ class DatabaseManager():
         if not self._table_curr:
             self._emit_error('No table selected')
             return []
-#        DB Class has not been implemented
-#        if not self._table_curr in mock_databases[self._database_curr]: # TODO: Peewee stuff
-#            self._emit_error('"{}" table not found in "{}" database'.format(
-#                self._table_curr, self._database_curr
-#            ))
-#            return []
+        if not self._database_state:
+            self._emit_error('No connection to database')
+            return []
 
         # Acquire a listing of the current table's structure.
+        try:
+            cursor = self._database_state.cursor()
+            # Query for table structure
+            cursor_str = """SELECT DISTINCT c.column_name, c.data_type, c.character_maximum_length, tc.constraint_type
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.columns AS c ON c.table_name = tc.table_name
+            WHERE c.table_name = '%s';"""%(self._table_curr)
+            cursor.execute(cursor_str)
+            records = cursor.fetchall()
 
-#        cursor = self._database_state.cursor()
-#        cursor_str = "SELECT column_name, data_type, character_maximum_length FROM information_schema.columns WHERE table_name=\'%s\'"%(self._table_curr)
-#        cursor.execute(cursor_str)
-#        records = cursor.fetchall()
-
-        #table_list = [i[0] for i in records]
-#        print("db_table_structure:")
-#        print(records)
-#        table_structure = records
-#        cursor.close()
-
-        # Transmit table structure.
-#        self._emit('UI_TABLE_STRUCTURE', table_structure = table_structure)
-
-        table_structure = mock_table_structure
+            # Fromat list<list>
+            table_list = [i[0] for i in records]
+            table_structure = [['Column_Name','Data_Type','Max_Length','Constraint_Type']] + records
+            #print("db_table_structure:")
+            #print(table_structure)
+            cursor.close()
+        except:
+            self.emit_error('Error while executing table structure')
+            return []
 
         # Transmit table structure.
         self._emit('UI_TABLE_STRUCTURE', table_structure = table_structure)
@@ -613,8 +574,6 @@ class DatabaseManager():
         Returns:
             str: Query result
         '''
-        # NOTE: Mock raw query result is a global.
-
         # Validate inputs & component state.
         if not self._connected:
             self._emit_error('Not connected to a server')
@@ -623,9 +582,28 @@ class DatabaseManager():
         if not self._database_curr:
             self._emit_error('No database selected')
             return ''
+        if not self._database_state:
+            self._emit_error('No connection to database')
+            return ''
 
         # Submit raw query to the DBMS.
-        raw_query_result = mock_raw_query_result
+        try:
+            cursor = self._database_state.cursor()
+            cursor.execute(raw)
+
+            try:
+                records = cursor.fetchall()
+                raw_query_result = records
+                #print (raw_query_result)
+            except:
+                raw_query_result = 'query accepted'
+                #print (raw_query_result)
+            self._database_state.commit()
+            cursor.close()
+        except:
+            self._emit_error('Error while executing query')
+            return ''
+
         # Transmit query result.
         self._emit('UI_RAW_QUERY', result = raw_query_result)
 
