@@ -1,6 +1,6 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Fri 20 Nov 2015 02:16:18 PM MST
+# Last Modified: Sun 29 Nov 2015 01:44:21 PM MST
 # Author: Brett Fedack
 
 
@@ -846,7 +846,7 @@ class TextBox(Labeled):
 
 
     def compose(self):
-        return (self._read_only and self._text != '', {'text': self._text})
+        return (not self._read_only and self._text != '', {'text': self._text})
 
 
     def decompose(self, text, **kwargs):
