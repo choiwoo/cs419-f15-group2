@@ -1,47 +1,20 @@
 # Filename: mock_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Fri 20 Nov 2015 10:10:00 PM PST
+# Last Modified: Sun 2 Nov 2015 10:10:00 AM PST
 # Author: Brett Fedack, Woo Choi
 
+# NOTE: Significant errors on list_tables_content and list_table_structure
+#       when used with UI.
+#       Raw query doesn't work with UI either.
+#       They all work when tested separatedly.
 
-#from uiframework import signals
+from uiframework import signals
 # for Testing
-import signals
+#import signals
 import psycopg2
-
-# NOTE: unit tests have not been thoroughly done.
 
 # NOTE: By convention, signals with "UI_" prefix are sent to the user
 # interface, and those with "DB_" prefix are received by this component.
-
-
-# Mock Data
-
-mock_raw_query_result ='''\
-HAL: Good afternoon, gentlemen.
-
-HAL: I am a HAL 9000 computer.
-
-HAL: I became 'operational at the H.A.L. plant in Urbana, Illinois on the \
-12th, of January 1992.
-
-HAL: My instructor was Mr. Langley, and he taught me to sing a song.
-
-HAL: If you\'d like to hear it I can sing it for you.
-
-DAVE BOWMAN: Yes, I\'d like to hear it, HAL. Sing it for me.
-
-HAL: It\'s called Daisy.
-
-HAL: Daisy, Daisy, give me your answer do.
-
-HAL: I\'m half crazy all for the love of you.
-
-HAL: It won\'t be a stylish marriage, I can\'t afford a carriage.
-
-HAL: But you\'ll look sweet upon the seat of a bicycle built for two.\
-'''
-
 
 class DatabaseManager():
     '''
