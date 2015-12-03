@@ -155,7 +155,9 @@ class DatabaseManager():
             self._port = port
 
             # Attempt to connect
-            psql_db = psycopg2.connect(user=self._username,
+            # ** Connects to db template1 as it is required to connect to a db
+            # when first connecting. template1 is available to all users by default.
+            psql_db = psycopg2.connect(dbname="template1",user=self._username,
 	           password=self._password,host=self._hostname,port=self._port)
 
             # Set below if connection is successful
@@ -422,7 +424,8 @@ class DatabaseManager():
         # Acquire a listing of tables in the current database.
         try:
             cursor = self._database_state.cursor()
-            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+            cursor.execute("""SELECT table_name FROM information_schema.tables
+            WHERE table_schema='public'""")
             records = cursor.fetchall()
 
             # Converting to acceptable format
@@ -477,7 +480,6 @@ class DatabaseManager():
 
             # Combine row headers and rows
             table_content = [table_column] + records
-            # print(table_content)
             #print("table_content:")
             #print(table_content)
             # close cursor
@@ -514,7 +516,8 @@ class DatabaseManager():
         try:
             cursor = self._database_state.cursor()
             # Query for table structure
-            cursor_str = """SELECT DISTINCT c.column_name, c.data_type, c.character_maximum_length, tc.constraint_type
+            cursor_str = """SELECT DISTINCT c.column_name, c.data_type,
+            c.character_maximum_length, tc.constraint_type, c.is_nullable
             FROM information_schema.table_constraints tc
             JOIN information_schema.columns AS c ON c.table_name = tc.table_name
             WHERE c.table_name = '%s';"""%(self._table_curr)
@@ -523,7 +526,8 @@ class DatabaseManager():
 
             # Fromat list<list>
             table_list = [i[0] for i in records]
-            table_structure = [['Column_Name','Data_Type','Max_Length','Constraint_Type']] + records
+            table_structure = [['Column Name','Data Type','Max Length', \
+            'Constraint_Type','Is Nullable']] + records
             #print("db_table_structure:")
             #print(table_structure)
             cursor.close()
@@ -536,7 +540,7 @@ class DatabaseManager():
 
         return table_structure
 
-    # Not coded
+
     def query_raw(self, raw, **kwargs):
         '''
         Queries current database using the given string
@@ -564,6 +568,8 @@ class DatabaseManager():
             cursor = self._database_state.cursor()
             cursor.execute(raw)
 
+            # If query returns anything, set it to raw_query_result
+            # Else, notify user that query was accepted
             try:
                 records = cursor.fetchall()
                 raw_query_result = records
@@ -574,7 +580,7 @@ class DatabaseManager():
             self._database_state.commit()
             cursor.close()
         except:
-            self._emit_error('Error while executing query')
+            self._emit_error('Error: %s'%(str(e)))
             return ''
 
         # Transmit query result.
