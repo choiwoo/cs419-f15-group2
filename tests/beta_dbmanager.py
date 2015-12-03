@@ -1,6 +1,6 @@
 # Filename: beta_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Wed 2 Dec 2015 09:10:00 AM PST
+# Last Modified: Wed 2 Dec 2015 10:00:00 AM PST
 # Author: Brett Fedack, Woo Choi
 
 # NOTE: 12/02/15
@@ -398,7 +398,7 @@ class DatabaseManager():
         # Acquire a listing of databases on the server.
 
         cursor = self._database_state.cursor()
-        cursor.execute("SELECT datname FROM pg_database")
+        cursor.execute("SELECT datname FROM pg_database;")
         records = cursor.fetchall()
 
         # Converting to acceptable list format
@@ -438,7 +438,7 @@ class DatabaseManager():
         try:
             cursor = self._database_state.cursor()
             cursor.execute("""SELECT table_name FROM information_schema.tables
-            WHERE table_schema='public'""")
+            WHERE table_schema='public';""")
             records = cursor.fetchall()
 
             # Converting to acceptable format
@@ -480,7 +480,7 @@ class DatabaseManager():
             cursor = self._database_state.cursor()
 
             # Get row headers
-            cursor_str = "SELECT column_name FROM information_schema.columns WHERE table_name=\'%s\'"%(self._table_curr)
+            cursor_str = "SELECT column_name FROM information_schema.columns WHERE table_name=\'%s\';"%(self._table_curr)
             cursor.execute(cursor_str)
             records = cursor.fetchall()
 
@@ -488,7 +488,7 @@ class DatabaseManager():
             table_column = [i[0] for i in records]
 
             # Get rows
-            cursor_str = "SELECT * FROM %s"%(self._table_curr)
+            cursor_str = "SELECT * FROM %s;"%(self._table_curr)
             cursor.execute(cursor_str)
             records = cursor.fetchall()
 
@@ -601,8 +601,9 @@ class DatabaseManager():
                 #print (query_result)
             self._database_state.commit()
             cursor.close()
-        except:
-            self._emit_error('Error: %s'%(str(e)))
+        except psycopg2.Error as e:
+            # Display error in the output box
+            self._emit('UI_RAW_QUERY', result = str(e))
             return ''
 
         # Transmit query result.
