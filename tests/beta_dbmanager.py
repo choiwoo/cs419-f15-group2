@@ -1,17 +1,22 @@
-# Filename: mock_dbmanager.py
+# Filename: beta_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Sun 2 Nov 2015 10:10:00 AM PST
+# Last Modified: Wed 2 Dec 2015 09:10:00 AM PST
 # Author: Brett Fedack, Woo Choi
 
-# NOTE: Significant errors on list_tables_content and list_table_structure
+# NOTE: 12/02/15
+#       Significant errors in list_tables_content and list_table_structure
 #       when used with UI.
-#       Raw query doesn't work with UI either.
-#       They all work when tested separatedly.
+
+#       list_tables_content: When a row has None value in, program crashes.
+
+#       Raw query is now sufficiently bug free.
+#       ### TESTING ### tag added for all testing print statements
 
 from uiframework import signals
+import psycopg2
 # for Testing
 #import signals
-import psycopg2
+
 
 # NOTE: By convention, signals with "UI_" prefix are sent to the user
 # interface, and those with "DB_" prefix are received by this component.
@@ -165,17 +170,19 @@ class DatabaseManager():
             self._database_state = psql_db
 
         except NameError as e:
+            ### TESTING ###
             #print("Name error %s"%(str(e)))
             self._emit_error('Name error %s'%(str(e)))
             return False
         except psycopg2.Error as e:
+            ### TESTING ###
             #print("Connection error %s"%(str(e)))
             self._emit_error('Connection error %s'%(str(e)))
             return False
 
         # Inform the system of success.
         self._emit_success('Connection with server established')
-	    # Testing
+	    ### TESTING ###
         # print("Connection success")
         return True
 
@@ -212,7 +219,7 @@ class DatabaseManager():
         # Inform the system of success.
         self._emit_success('Connection with server terminated')
 
-        # Testing
+        ### TESTING ###
         #print("Disconnect worked")
         return True
 
@@ -277,8 +284,9 @@ class DatabaseManager():
             bool: True if database is set; False otherwise
         '''
         # NOTE: Mock databases are stored as a global.
-        # Testing
+        ### TESTING ###
         #print("starting set_database")
+
         # Unset database if unspecified.
         if database is None:
             self._database_curr = None
@@ -295,6 +303,7 @@ class DatabaseManager():
             self._database_state.close()
             self._database_state = ''
             self._connected = False
+            ### TESTING ###
             #print("disconn worked in set db")
 
         # Must connect again using the provided database
@@ -308,12 +317,15 @@ class DatabaseManager():
 
             self._connected = True
             self._database_state = psql_db
+            ### TESTING ###
             #print("db set connected")
         except NameError as e:
+            ### TESTING ###
             #print("Name error %s"%(str(e)))
             self._emit_error('Name error %s'%(str(e)))
             return False
         except psycopg2.Error as e:
+            ### TESTING ###
             #print("Connection error %s"%(str(e)))
             self._emit_error('Connection error %s'%(str(e)))
             return False
@@ -321,7 +333,7 @@ class DatabaseManager():
         # Inform system of success.
         self._emit('UI_SET_DATABASE', database = database)
         self._emit_success('"{}" set as current database'.format(database))
-
+        ### TESTING ###
         #print(self._database_curr)
         return True
 
@@ -354,6 +366,7 @@ class DatabaseManager():
 
         # Set the table.
         self._table_curr = table
+        ### TESTING ###
         #print(self._table_curr)
 
         # Inform the system of success.
@@ -391,7 +404,7 @@ class DatabaseManager():
         # Converting to acceptable list format
         database_list = [i[0] for i in records]
 
-        # Testing
+        ### TESTING ###
         #print(database_list)
         cursor.close()
 
@@ -431,6 +444,7 @@ class DatabaseManager():
             # Converting to acceptable format
             table_list = [i[0] for i in records]
 
+            ### TESTING ###
             #print(table_list)
             cursor.close()
         except:
@@ -480,8 +494,11 @@ class DatabaseManager():
 
             # Combine row headers and rows
             table_content = [table_column] + records
+
+            ### TESTING ###
             #print("table_content:")
             #print(table_content)
+
             # close cursor
             cursor.close()
         except:
@@ -528,6 +545,7 @@ class DatabaseManager():
             table_list = [i[0] for i in records]
             table_structure = [['Column Name','Data Type','Max Length', \
             'Constraint_Type','Is Nullable']] + records
+            ### TESTING ###
             #print("db_table_structure:")
             #print(table_structure)
             cursor.close()
@@ -572,11 +590,15 @@ class DatabaseManager():
             # Else, notify user that query was accepted
             try:
                 records = cursor.fetchall()
-                raw_query_result = records
-                #print (raw_query_result)
+                ### TESTING ###
+                #print (records)
+
+                # Return query_result as a string
+                query_result = "" + str(records)
             except:
-                raw_query_result = 'query accepted'
-                #print (raw_query_result)
+                query_result = 'query accepted'
+                ### TESTING ###
+                #print (query_result)
             self._database_state.commit()
             cursor.close()
         except:
@@ -584,6 +606,6 @@ class DatabaseManager():
             return ''
 
         # Transmit query result.
-        self._emit('UI_RAW_QUERY', result = raw_query_result)
+        self._emit('UI_RAW_QUERY', result = query_result)
 
-        return raw_query_result
+        return query_result
