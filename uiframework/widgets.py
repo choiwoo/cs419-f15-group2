@@ -1,6 +1,6 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Fri 20 Nov 2015 02:16:18 PM MST
+# Last Modified: Fri 04 Dec 2015 07:31:14 PM MST
 # Author: Brett Fedack
 
 
@@ -846,7 +846,7 @@ class TextBox(Labeled):
 
 
     def compose(self):
-        return (self._read_only and self._text != '', {'text': self._text})
+        return (not self._read_only and self._text != '', {'text': self._text})
 
 
     def decompose(self, text, **kwargs):
@@ -1474,13 +1474,16 @@ class Table(Labeled):
                 if row[0] == '|'
             ]
 
+        # Convert table items into strings.
+        table = [[str(item) if item else '' for item in row] for row in table]
+
         # Separate table data into header and body sections.
         self._header = table[0]
         self._body = table[1:]
 
         # Calculate the maximum width of each column.
         self._col_widths = [
-            max([len(str(row[i])) + 4 for row in table])
+            max([len(row[i]) + 4 for row in table])
             for i in range(len(self._header))
         ]
         self._col_widths[-1] -= 4
