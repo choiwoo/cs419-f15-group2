@@ -4,14 +4,15 @@ import psycopg2
 import subprocess
 import os
 import sys
-import itertools
-
+import pickle
+import uuid
+import os.path
 
 class db(object):
-        '''
+    '''
     Database class that acts as a container for database properties
     Attributes:
-		_name (str): Name of the database
+                _name (str): Name of the database
 		_username (str):Username for login to database server
 		_password (str): Password to for database server login
         _hostname (str): Name of host machine on which the server is located
@@ -20,46 +21,34 @@ class db(object):
         _db_state (connect): connect object from psycopg2
     '''
 
-	newid = itertools.count().next #generates new thread-safe value
+   # newid = itertools.count() #generates new thread-safe value
 
-    def __init__(self,**kwargs):
+    def __init__(self,name,username,password,**kwargs):
+        '''id should actually be self generated, need to determine a method for
+        effectively doing so http://stackoverflow.com/questions/1045344/how-do-you-create-an-incremental-id-in-a-python-class'''
 
-	    '''id should actually be self generated, need to determine a method for
-		effectively doing so http://stackoverflow.com/questions/1045344/how-do-you-create-an-incremental-id-in-a-python-class'''
+        self._id = uuid.uuid4() #applies value to get a unique object id
 
-	    self._id = resource_cl.newid()	#applies value to get a unique object id
+        self._name = name
 
-        if 'name' in kwargs:
-            self._name = name
-        else:
-            self._name=""
+        self._username = username
 
-        if 'password' in kwargs:
-            self._password = password
-        else:
-            self._password=""
+        self._password = password
 
-        if 'username' in kwargs:
-            self._username = username
-        else:
-            self._username = ""
-
+        self._hostname = "127.0.0.1"
         if 'hostname' in kwargs:
-            self._hostname = hostname
-        else:
-            self._hostname = 127.0.0.1 #initialized to default if no value provided
-
+            self._hostname = kwargs['hostname']
+       
+        self._portnum = 5432
         if 'portnum' in kwargs:
-            self._portnum = portnum
-        else:
-            self._portnum = 2222 #same as hostname
+            self._portnum = kwargs['portnum']
 
-		self._table_list = []
+        self._table_list = []
 
 	#Getters
 
     def getid(self):
-        return self_.id
+        return self._id
 
     def getname(self):
         return self._name
@@ -78,8 +67,8 @@ class db(object):
 
 	#Setters
 
-    def _setid(self,value):
-	self._id=value
+    def setid(self,value):
+        self._id=value
 
     def setname(self,value):
         self._name= value
@@ -126,14 +115,14 @@ class db(object):
 
     #List methods
     def addTable(self,table_name):
-	'''Appends the given table name to the current table list'''
+        '''Appends the given table name to the current table list'''
 
         self._db_list.append(table_name)
         return True
 
     def addTableAll(self,table_names):
 
-	'''Adds all table names to the currently held table list'''
+        '''Adds all table names to the currently held table list'''
 
         for i in table_list:
             self._table_list.append(table_names[i])
@@ -141,8 +130,8 @@ class db(object):
 
     def updateTable(self,table_pre,table_post):
 
-	'''Changes the name of a table currently stored in the table list
-	from table_pre to table_post'''
+        '''Changes the name of a table currently stored in the table list
+        from table_pre to table_post'''
 
         for i in self._table_list:
             if self._table_list[i] == table_pre:
@@ -155,8 +144,8 @@ class db(object):
 
     def delTable(self,table_name):
 
-	'''IF the table name exists in the table list it removes that table
-	name entry and returns true, if it does not returns false'''
+        '''IF the table name exists in the table list it removes that table
+        name entry and returns true, if it does not returns false'''
 
         for i in self._table_list:
             if self._table_list[i] == table_name:
@@ -167,10 +156,19 @@ class db(object):
 
     def delTableAll(self):
 
-	'''Deletes all table names currently stored in table_list'''
+        '''Deletes all table names currently stored in table_list'''
 
         self._table_list.clear()
-            return True
+        return True
+
+    def printProperties(self):
+        print("Id: %s" % self._id)
+        print("Name: %s" % self._name)
+        print("User: %s" % self._username)
+        print("Pass: %s" % self._password)
+        print("Host: %s" % self._hostname)
+        print("Port: %s" % self._portnum)
+        return
 
 
 class DatabaseManager():
@@ -204,10 +202,10 @@ class DatabaseManager():
         # Initialize attributes.
         self._connected = False
         self._database_curr = ''
-		self._database_state = ''
+        self._database_state = ''
         self._table_curr = ''
-		self._database_list = []
-
+        self._database_list = []
+        #self._database_list = pickle.load(open('savedb.p','rb')
 
         # Setup signal handling.
         self._add_signal_handler('DB_CONNECT', self.connect_handler)
@@ -252,6 +250,26 @@ class DatabaseManager():
         return self._signal_router.forward(signal)
 
 
+    def _emit_error(self, error_message):
+        '''
+        Emits a signal containing feedback for the UI in response to an error
+        Parameters:
+            error_message(str):message=error_message, error=True
+        '''
+
+        self._emit('UI_FEEDBACK',message=error_message,error=True)
+
+
+    def _emit_success(self, success_message):
+        '''
+        Emits a signal containing feedback for the UI in response to success
+        Parameters:
+            success_message(str):message=success_message, error=False
+        '''
+
+        self._emit('UI_FEEDBACK',message=success_message,error=False)
+
+
 
     def connect_handler(self, dbname, username, password, hostname, **kwargs):
         print("Connect handler runs")
@@ -285,13 +303,14 @@ class DatabaseManager():
 
     def connect_handlerv2(self,dbid, **kwargs):
 
-		#change to id??
-        for i in db_list:
-            if db_list[i].id == dbid
-                self._curr_db = db_list[i]
+        #change to id??
+        for i in self. _database_list:
+            if i.id == dbid:
+                self._curr_db = i
                 break
         else:
-            self._msg_handler(message="Could not find database in list",error=True)
+            print("Error finding db")
+            self._emit_error("Could not find database in list")
             #database not found in database list, send signal back for creating a new db
             return False
 
@@ -306,39 +325,48 @@ class DatabaseManager():
                 psql_db = psycopg2.connect(dbname=dbname,user=username,password=password,host=hostname,port=portnum)
             else:
                 psql_db = psycopg2.connect(dbname=dbname,user=username,password=password,host=hostname)
+
+            self._connected = True
+            self._database_state = psql_db
         except psycopg2.Error as e:
-            self._msg_handler("Connection error %s"%( str(e)),True)
+            self._emit_error("Connection error %s"%( str(e)),True)
             print("Connection error %s"%(str(e)))
             return False
 
         return True
 
+
     def create_connection_handler(self, dbname, username, password, hostname, **kwargs):
 
-        for i in db_list:
-            if db_list[i].name == name:
-                self._msg_handler("That database already exists",error=True)
-		connect_handlerv2(db_list[i].id)
+        for i in self._database_list:
+            if i.name == name:
+                self._emit_error("That database already exists")
+                connect_handlerv2(i.id)
                 return False
 
         else:
 
             try:
-                new_db = db(dbname,username,password,hostname)
-
+                new_db = db(dbname,username,password,hostname=hostname)
+                                    
                 if 'port' in kwargs:
-                    new_db.portnum = port
-
-
+                    new_db.portnum = kwargs['port']
+                
+                self._database_list.append(new_db)
+                
+                if self.connect_handlerv2(new_db.id):
+                    self._emit_success("Connection created for %s, now connected"%(dbname))
+                
+                else:                  
+                    self._database_list.remove(new_db)
+                    self._emit_error("Could not create new database connection for db %s"%dbname)
 
             except AttributeError as e:
-                self._msg_handler("Connection creation failed %s"%(str(e)),error=True)
-
-            if connect_handlerv2(new_db.id): #call the connect handler to initiate a connection??
-	        db_list.append(new_db)
-		self._msg_handler("Connection created for %s, now connected"%(dbname),error=False)
-	    else:
-                self._msg_handler("Could not create new database connection for db %s"%dbname,error=True)
+                self._emit_error("Connection creation failed %s"%(str(e)))
+            
+            
+            for i in self._database_list:
+                i.printProperties()
 
         return True
 
@@ -360,25 +388,31 @@ class DatabaseManager():
 
         return
 
-    def import_handler(self, servername, username, pathname, filename, **kwargs):
+    def import_handler(self, pathname, filename, **kwargs):
         db_table = ""
 
+        print("inside import handler")
         try:
-            db_user = username
-            db_name = servername
+            db_user = self._curr_db.username
+            db_name = self._curr_db.name
             path_name = pathname
             file_name = filename
 
             location = r"%s/%s"%(path_name,file_name)
             print("Importing database %s from %s"%(db_name,location))
 
-            if 'table' in kwargs:
-                db_table = kwargs['table']
+            pg_restore_arr = ['pg_restore','-U',db_user,'-w']
+            
 
-                if db_table is not None:
-                    ps = subprocess.Popen(['pg_restore','-U',db_user,'-t',db_table,'-w','-d',db_name,location],stdout=subprocess.PIPE)
-            else:
-                ps = subprocess.Popen(['pg_restore','-U',db_user,'-w','-d',db_name,location],stdout=subprocess.PIPE)
+            if 'clean' in kwargs:
+                if kwargs['clean']:    
+                    pg_restore_arr.append('-c')
+
+            pg_restore_arr.append('-d')
+            pg_restore_arr.append(db_name)
+            pg_restore_arr.append(location)
+
+            ps = subprocess.Popen(tuple(pg_restore_arr),stdout=subprocess.PIPE)
         except NameError as e:
             print("Name error %s"%(str(e)))
         except OSError as e:
@@ -388,25 +422,38 @@ class DatabaseManager():
         return True
 
 
-    def export_handler(self, servername, username, pathname, filename, **kwargs):
+    def export_handler(self, pathname, filename, **kwargs):
         db_table = ""
 
         try:
-            db_user = username
-            db_name = servername
+            db_user = self._curr_db.username
+            db_name = self._curr_db.name
             path_name = pathname
             file_name = filename
-
+           
+            
             destination = r"%s/%s"%(path_name,file_name)
-            print("Importing database %s from %s"%(db_name,destination))
+            print("Exporting database %s from %s"%(db_name,destination))
 
-            if 'table' in kwargs:
-                db_table = kwargs['table']
+            
+            pg_dump_arr = ['pg_dump','-U',db_user,'-v','-O']
 
-                if db_table is not None:
-                    ps = subprocess.Popen(['pg_dump','-U',db_user,'-t',db_table,'-Fc','-w','-d',db_name,'-f',destination],stdout=subprocess.PIPE)
-            else:
-                ps = subprocess.Popen(['pg_dump','-U',db_user,'-Fc','-w','-d',db_name,'-f',destination],stdout=subprocess.PIPE)
+            if 'plain' in kwargs:
+                if kwargs['plain']:
+                    pg_dump_arr.append('-Fp')
+                else:
+                    pg_dump_arr.append('-Fc')
+
+            if 'schema' in kwargs:
+                if kwargs['schema']:
+                    pg_dump_arr.append('-s')
+
+            pg_dump_arr.append('-d')
+            pg_dump_arr.append(db_name)
+            pg_dump_arr.append('-f')
+            pg_dump_arr.append(destination)
+
+            ps = subprocess.Popen(tuple(pg_dump_arr),stdout=subprocess.PIPE)
         except NameError as e:
             print("Name error %s"%(str(e)))
         except OSError as e:
@@ -424,20 +471,34 @@ class DatabaseManager():
         '''
         # Validate inputs & component state.
         if not self._connected:
-            self._emit(
-                'UI_FEEDBACK',
-                message = 'Not connected to a server',
-                error = True
-            )
+            self._emit_error('Not connected to a server')
             return False
 
+        if not self._database_state:
+            self._emit_error('Not connected to a server')
         # Disconnect from the current server.
+            self._connected = False
+            return False
+
+        #print("Made it to before try")
+        try:
+            outfile = open('savedb.p','wb+')
+            pickle.dump(self._database_list,outfile)
+            self._database_state.close()   
+
+        except psycopg2.Error as e:
+            self._emit_error('Disconnect failed')
+            print("Error creating file")
+            print("Connection error %s"%(str(e)))
+            return False
+        
+
         self._connected = False
-        self._emit(
-            'UI_FEEDBACK',
-            message = 'Connection with server terminated',
-            error = False
-        )
+        self._database_curr = ''
+        self._table_curr = ''
+        self._database_state = ''
+        self._emit_success('Connection with server terminated') 
+        
 
         return True
 
