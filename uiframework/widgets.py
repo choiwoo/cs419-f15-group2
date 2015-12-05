@@ -1,6 +1,6 @@
 # Filename: widgets.py
 # Creation Date: Thu 08 Oct 2015
-# Last Modified: Wed 02 Dec 2015 10:55:23 PM MST
+# Last Modified: Fri 04 Dec 2015 07:31:14 PM MST
 # Author: Brett Fedack
 
 
@@ -1474,20 +1474,16 @@ class Table(Labeled):
                 if row[0] == '|'
             ]
 
+        # Convert table items into strings.
+        table = [[str(item) if item else '' for item in row] for row in table]
+
         # Separate table data into header and body sections.
         self._header = table[0]
         self._body = table[1:]
 
-        # Convert "None" types to empty strings.
-        for row in table:
-            for i in range(len(row)):
-                item = row[i]
-                if not item:
-                    row[i] = ''
-
         # Calculate the maximum width of each column.
         self._col_widths = [
-            max([len(str(row[i])) + 4 for row in table])
+            max([len(row[i]) + 4 for row in table])
             for i in range(len(self._header))
         ]
         self._col_widths[-1] -= 4
