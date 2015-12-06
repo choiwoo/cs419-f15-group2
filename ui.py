@@ -1,6 +1,6 @@
 # Filename: ui.py
 # Creation Date: Thu 05 Nov 2015
-# Last Modified: Fri 20 Nov 2015 11:37:36 PM MST
+# Last Modified: Sun 06 Dec 2015 12:37:40 PM MST
 # Author: Brett Fedack
 
 
@@ -273,19 +273,9 @@ def build_database_tab(parent):
     '''
     database = Tab('Database', parent, ord('d'))
     database.resize(height = 22)
+    database_group = database.content_region
 
-    tab_group = Group(database)
-    tab_group.scale(-4, -4).offset(2, 3)
-
-    select_tab = VertTab('General', tab_group, ord('g'))
-    import_tab = VertTab('Import', tab_group, ord('i'))
-    export_tab = VertTab('Export', tab_group, ord('e'))
-
-    select_tab_group = select_tab.content_region
-    import_tab_group = import_tab.content_region
-    export_tab_group = export_tab.content_region
-
-    translator = DatasigTranslator(select_tab_group)
+    translator = DatasigTranslator(database_group)
     translator.map_input('UI_DATABASE_LIST', databases = 'options')
     translator.map_output('DB_SET_DATABASE', option = 'database')
     translator.map_request('DB_LIST_DATABASES')
@@ -295,6 +285,91 @@ def build_database_tab(parent):
     database_list.resize(width = 30)
     database_list.align('CENTER')
     database_list.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
+
+    tab_group = database.content_region.scale(height = -3).offset(y = 3)
+
+    import_tab = VertTab('Import', tab_group, ord('i'))
+    export_tab = VertTab('Export', tab_group, ord('e'))
+
+    import_tab_group = import_tab.content_region
+    export_tab_group = export_tab.content_region
+
+    translator = DatasigTranslator(import_tab_group)
+    translator.map_output('DB_IMPORT_DATABASE')
+
+    form = Form(
+        translator,
+        path = '', filename = '', overwrite = False
+    )
+
+    translator = DatasigTranslator(form)
+    translator.map_output('DATASIG_OUT', text = 'path')
+
+    import_path = TextField('Path', translator, ord('p'))
+    import_path.scale(width = -12).offset(x = 12)
+    import_path.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('DATASIG_OUT', text = 'filename')
+
+    import_file = TextField('Filename', translator, ord('f'))
+    import_file.scale(width = -12).offset(12, 3)
+    import_file.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('DATASIG_OUT', enabled = 'overwrite')
+
+    overwrite = FlipSwitch('Overwrite Existing', translator, ord('o'))
+    overwrite.offset(32, 6)
+    overwrite.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('UI_SUBMIT')
+
+    import_button = Button('Import', translator, ord('i'))
+    import_button.offset(12, 10)
+
+    translator = DatasigTranslator(export_tab_group)
+    translator.map_output('DB_EXPORT_DATABASE')
+
+    form = Form(
+        translator,
+        path = '', filename = '', plaintext = False, schema_only = False
+    )
+
+    translator = DatasigTranslator(form)
+    translator.map_output('DATASIG_OUT', text = 'path')
+
+    export_path = TextField('Path', translator, ord('p'))
+    export_path.scale(width = -12).offset(x = 12)
+    export_path.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('DATASIG_OUT', text = 'filename')
+
+    export_file = TextField('Filename', translator, ord('f'))
+    export_file.scale(width = -12).offset(12, 3)
+    export_file.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('DATASIG_OUT', enabled = 'plaintext')
+
+    plaintext = FlipSwitch('Plain Text', translator, ord('t'))
+    plaintext.offset(24, 6)
+    plaintext.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('DATASIG_OUT', enabled = 'schema_only')
+
+    schema_only = FlipSwitch('Schema Only', translator, ord('s'))
+    schema_only.offset(50, 6)
+    schema_only.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
+
+    translator = DatasigTranslator(form)
+    translator.map_output('UI_SUBMIT')
+
+    export_button = Button('Export', translator, ord('e'))
+    export_button.offset(12, 10)
 
     return database
 
