@@ -1,0 +1,18 @@
+How to set up VM
+12/5/15 : incomplete
+
+Downloads
+1. Download and install VirtualBox : https://www.virtualbox.org/wiki/Downloads
+2. Download and install Vagrant : https://www.vagrantup.com/downloads.html
+3. Pull the repository : https://github.com/fedackb/cs419-f15-group2.git
+
+Direction
+1. Go to the directory vagrant in cs419-f15-group2
+2. type in : vagrant up
+3. wait a long time until everything is done
+4. log into vagrant
+	id: 		vagrant
+	password:	vagrant
+5. ** have something that moves cs419-f15-group2 directory into the home directory
+6. ** TERM=xterm-256color python3 ./main.py
+7.  Need something to pre create postgre accounts, passwords and databases for testing

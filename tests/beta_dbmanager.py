@@ -3,15 +3,6 @@
 # Last Modified: Wed 2 Dec 2015 10:00:00 AM PST
 # Author: Brett Fedack, Woo Choi
 
-# NOTE: 12/02/15
-#       Significant errors in list_tables_content and list_table_structure
-#       when used with UI.
-
-#       list_tables_content: When a row has None value in, program crashes.
-
-#       Raw query is now sufficiently bug free.
-#       ### TESTING ### tag added for all testing print statements
-
 from uiframework import signals
 import psycopg2
 # for Testing
@@ -585,6 +576,7 @@ class DatabaseManager():
         try:
             cursor = self._database_state.cursor()
             cursor.execute(raw)
+            self._database_state.commit()
 
             # If query returns anything, set it to raw_query_result
             # Else, notify user that query was accepted
@@ -596,10 +588,10 @@ class DatabaseManager():
                 # Return query_result as a string
                 query_result = "" + str(records)
             except:
-                query_result = 'query accepted'
+                query_result = 'Query Accepted'
                 ### TESTING ###
                 #print (query_result)
-            self._database_state.commit()
+
             cursor.close()
         except psycopg2.Error as e:
             # Display error in the output box
