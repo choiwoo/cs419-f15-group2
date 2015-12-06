@@ -1,7 +1,7 @@
 # Filename: dbmanager.py
 # Creation Date: Sat 5 Dec 2015
 # Last Modified: Sat 5 Dec 2015 06:00:00 PM PST
-# Author: Brett Fedack, Woo Choi
+# Author: Brett Fedack, Woo Choi, Eric Christensen
 
 from uiframework import signals
 import psycopg2
