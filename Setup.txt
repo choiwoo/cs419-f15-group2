@@ -9,10 +9,20 @@ Downloads
 Direction
 1. Go to the directory vagrant in cs419-f15-group2
 2. type in : vagrant up
-3. wait a long time until everything is done
+3. wait a lonnnnng time until everything is downloaded and installed
 4. log into vagrant
 	id: 		vagrant
 	password:	vagrant
 5. ** have something that moves cs419-f15-group2 directory into the home directory
 6. ** TERM=xterm-256color python3 ./main.py
 7.  Need something to pre create postgre accounts, passwords and databases for testing
+
+Shut down
+Suspending: vagrant suspend
+	Saves current running state of the machine and stop it.
+	Just run vagrant up again to resume from where you left off
+Halting: vagrant halt
+	Gracefully shuts down the guest OS and powers down the guest machine.
+	use vagrant up when ready to boot again
+Destroying: vagrant destroy
+	Removes all traces of guest machine from the system.
