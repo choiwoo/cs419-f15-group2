@@ -1,6 +1,6 @@
 # Filename: mock_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Fri 20 Nov 2015 02:23:26 PM MST
+# Last Modified: Sun 06 Dec 2015 12:39:29 AM MST
 # Author: Brett Fedack
 
 
@@ -120,6 +120,8 @@ class DatabaseManager():
         self._add_signal_handler('DB_LIST_TABLES', self.list_tables)
         self._add_signal_handler('DB_SET_DATABASE', self.set_database)
         self._add_signal_handler('DB_SET_TABLE', self.set_table)
+        self._add_signal_handler('DB_EXPORT_DATABASE', self.export_db)
+        self._add_signal_handler('DB_IMPORT_DATABASE', self.import_db)
         self._add_signal_handler('DB_TABLE_CONTENT', self.list_table_content)
         self._add_signal_handler('DB_TABLE_STRUCTURE', self.list_table_structure)
         self._add_signal_handler('DB_RAW_QUERY', self.query_raw)
@@ -242,13 +244,13 @@ class DatabaseManager():
         return True
 
 
-    def import_db(self, path, filetype, **kwargs):
+    def import_db(self, path, filename, overwrite, **kwargs):
         '''
         Imports a database from the given file
 
         Parameters:
             path (str): Path to input file
-            filetype (str): Format of input file
+            filename (str): Name of input file
 
         Returns:
             True if a new database is created; False otherwise
@@ -265,13 +267,13 @@ class DatabaseManager():
         self._emit_success('Database successfully imported from file')
 
 
-    def export_db(self, path, filetype, **kwargs):
+    def export_db(self, path, filename, plaintext, schema_only, **kwargs):
         '''
         Exports current database to the given file
 
         Parameters:
             path (str): Path to output file
-            filetype (str): Format of output file
+            filename (str): Name of output file
 
         Returns:
             True if a new file is created; False otherwise
