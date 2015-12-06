@@ -5,19 +5,12 @@ apt-get update
 apt-get -y install postgresql
 apt-get -y install python3.4
 apt-get -y install python-setuptools
-apt-get -y install git
+#apt-get -y install git
 apt-get -y install python3-psycopg2
+apt-get -y install xfce4
+#TERM=xterm-256color
+#startxfce4&
 
-# Installing peewee
-git clone https://github.com/coleifer/peewee.git
-cd peewee
-python setup.py install
-
-# Test
-
-touch fooo
-
-# Our source codes
 
 
 if ! [ -L /var/www ]; then
