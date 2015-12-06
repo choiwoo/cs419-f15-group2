@@ -1,6 +1,6 @@
 # Filename: ui.py
 # Creation Date: Thu 05 Nov 2015
-# Last Modified: Sun 06 Dec 2015 12:38:26 AM MST
+# Last Modified: Sun 06 Dec 2015 12:37:40 PM MST
 # Author: Brett Fedack
 
 
@@ -319,8 +319,8 @@ def build_database_tab(parent):
     translator = DatasigTranslator(form)
     translator.map_output('DATASIG_OUT', enabled = 'overwrite')
 
-    overwrite = FlipSwitch('Overwirte Existing', translator, ord('o'))
-    overwrite.offset(25, 6)
+    overwrite = FlipSwitch('Overwrite Existing', translator, ord('o'))
+    overwrite.offset(32, 6)
     overwrite.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
@@ -355,7 +355,7 @@ def build_database_tab(parent):
     translator.map_output('DATASIG_OUT', enabled = 'plaintext')
 
     plaintext = FlipSwitch('Plain Text', translator, ord('t'))
-    plaintext.offset(25, 6)
+    plaintext.offset(24, 6)
     plaintext.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
