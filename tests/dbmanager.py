@@ -1,8 +1,8 @@
 # Filename: dbmanager.py
 # Creation Date: Sat 5 Dec 2015
-# Last Modified: Sat 5 Dec 2015 06:00:00 PM PST
+# Last Modified: Sat 6 Dec 2015 04:30:00 PM PST
 # Author: Brett Fedack, Woo Choi, Eric Christensen
-
+# Update: Cleaned out notes, removed constraint type from structure
 from uiframework import signals
 import psycopg2
 import subprocess
@@ -146,8 +146,6 @@ class DatabaseManager():
             self._emit_error('Port number must be specified')
             return False
 
-        # NOTE: Assume all other arguments are optional for the sake of this mock-up.
-
         # Connect to server.
         try:
             # Store connection state internally.
@@ -240,7 +238,7 @@ class DatabaseManager():
         # Import given file.
         db_table = ""
 
-        print("inside import handler")
+        #print("inside import handler")
         try:
             db_user = self._username
             db_name = self._database_curr
@@ -359,7 +357,6 @@ class DatabaseManager():
         Returns:
             bool: True if database is set; False otherwise
         '''
-        # NOTE: Mock databases are stored as a global.
         ### TESTING ###
         #print("starting set_database")
 
@@ -424,7 +421,6 @@ class DatabaseManager():
         Returns:
             bool: True if table is set; False otherwise
         '''
-        # NOTE: Mock databases are stored as a global.
 
         # Unset table if unspecified.
         if table is None:
@@ -459,7 +455,6 @@ class DatabaseManager():
         Returns:
             list: List of table names
         '''
-        # NOTE: Mock databases are stored as a global.
 
         # Validate inputs & component state.
         if not self._connected:
@@ -497,7 +492,6 @@ class DatabaseManager():
         Returns:
             list: List of table names
         '''
-        # NOTE: Mock databases are stored as a global.
 
         # Validate inputs & component state.
         if not self._connected:
@@ -610,7 +604,7 @@ class DatabaseManager():
             cursor = self._database_state.cursor()
             # Query for table structure
             cursor_str = """SELECT DISTINCT c.column_name, c.data_type,
-            c.character_maximum_length, tc.constraint_type, c.is_nullable
+            c.character_maximum_length, c.is_nullable
             FROM information_schema.table_constraints tc
             JOIN information_schema.columns AS c ON c.table_name = tc.table_name
             WHERE c.table_name = '%s';"""%(self._table_curr)
@@ -620,7 +614,7 @@ class DatabaseManager():
             # Fromat list<list>
             table_list = [i[0] for i in records]
             table_structure = [['Column Name','Data Type','Max Length', \
-            'Constraint_Type','Is Nullable']] + records
+            'Is Nullable']] + records
             ### TESTING ###
             #print("db_table_structure:")
             #print(table_structure)
