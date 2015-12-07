@@ -1,5 +1,5 @@
 How to set up VM
-12/5/15 : incomplete
+
 
 Downloads
 1. Download and install VirtualBox : https://www.virtualbox.org/wiki/Downloads
@@ -7,15 +7,29 @@ Downloads
 3. Pull the repository : https://github.com/fedackb/cs419-f15-group2.git
 
 Direction
-1. Go to the directory vagrant in cs419-f15-group2
+1. Go to the directory cs419-f15-group2 (from github pull)
 2. type in : vagrant up
 3. wait a lonnnnng time until everything is downloaded and installed
 4. log into vagrant
 	id: 		vagrant
 	password:	vagrant
-5. ** have something that moves cs419-f15-group2 directory into the home directory
-6. ** TERM=xterm-256color python3 ./main.py
-7.  Need something to pre create postgre accounts, passwords and databases for testing
+5. Once logged in, type in : "sudo startxfce4&"
+	This will start a gui based desktop
+6. Click Application Menu from the upper left corner
+7. Click Terminal Emulator
+8. run main.py:
+	TERM=xterm-256color python3 ./main.py
+
+** bootstrap.sh creates user guest01 with password pass01 and a database guest01.
+** These can be changed in bootstrap.sh.
+
+Sample
+
+Host Name: localhost
+Port Number: 5432
+User Name: guest01
+Password: pass01
+Enjoy.
 
 Shut down
 Suspending: vagrant suspend
