@@ -69,7 +69,8 @@ class DatabaseManager():
         self._add_signal_handler('DB_TABLE_CONTENT', self.list_table_content)
         self._add_signal_handler('DB_TABLE_STRUCTURE', self.list_table_structure)
         self._add_signal_handler('DB_RAW_QUERY', self.query_raw)
-
+        self._add_signal_handler('DB_EXPORT_DATABASE', self.export_db)
+        self._add_signal_handler('DB_IMPORT_DATABASE', self.import_db)
 
     def __del__(self):
         ''' Deregisters signal handlers before destroying this component '''
@@ -234,6 +235,12 @@ class DatabaseManager():
         if not self._connected:
             self._emit_error('Not connected to a server')
             return False
+        if not pathname:
+            self._emit_error('No database selected')
+            return False
+        if not filename:
+            self._emit_error('No database selected')
+            return False
 
         # Import given file.
         db_table = ""
@@ -297,7 +304,12 @@ class DatabaseManager():
         if not self._database_curr:
             self._emit_error('No database selected')
             return False
-
+        if not pathname:
+            self._emit_error('No database selected')
+            return False
+        if not filename:
+            self._emit_error('No database selected')
+            return False
         # Export current database to given file.
         db_table = ""
 
