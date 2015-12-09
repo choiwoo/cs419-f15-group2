@@ -1,6 +1,6 @@
 # Filename: dbmanager.py
 # Creation Date: Sat 5 Dec 2015
-# Last Modified: Wed 09 Dec 2015 12:01:29 PM MST
+# Last Modified: Wed 09 Dec 2015 12:04:14 PM MST
 # Author: Brett Fedack, Woo Choi, Eric Christensen
 # Update: Cleaned out notes, removed constraint type from structure
 from uiframework import signals
@@ -255,7 +255,7 @@ class DatabaseManager():
             location = r"%s/%s"%(path_name,file_name)
             #print("Importing database %s from %s"%(db_name,location))
 
-            pg_restore_arr = ['pg_restore','-U',db_user, '-W', self._password, '-h', self._hostname, '-w']
+            pg_restore_arr = ['pg_restore','-U',db_user, '-W', self._password, '-h', self._hostname]
 
 
             if 'clean' in kwargs:
