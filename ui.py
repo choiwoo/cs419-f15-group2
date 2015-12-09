@@ -1,6 +1,6 @@
 # Filename: ui.py
 # Creation Date: Thu 05 Nov 2015
-# Last Modified: Wed 09 Dec 2015 10:16:17 AM MST
+# Last Modified: Wed 09 Dec 2015 10:54:34 AM MST
 # Author: Brett Fedack
 
 
@@ -299,7 +299,7 @@ def build_database_tab(parent):
 
     form = Form(
         translator,
-        path = '', filename = '', overwrite = False
+        pathname = '', filename = '', clean = False
     )
 
     translator = DatasigTranslator(form)
@@ -334,7 +334,7 @@ def build_database_tab(parent):
 
     form = Form(
         translator,
-        path = '', filename = '', plain = False, schema = False
+        pathname = '', filename = '', plain = False, schema = False
     )
 
     translator = DatasigTranslator(form)
