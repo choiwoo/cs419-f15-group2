@@ -1,6 +1,6 @@
 # Filename: mock_dbmanager.py
 # Creation Date: Tue 13 Oct 2015
-# Last Modified: Sun 06 Dec 2015 12:39:29 AM MST
+# Last Modified: Wed 09 Dec 2015 11:14:28 AM MST
 # Author: Brett Fedack
 
 
@@ -244,7 +244,7 @@ class DatabaseManager():
         return True
 
 
-    def import_db(self, path, filename, overwrite, **kwargs):
+    def import_db(self, pathname, filename, clean, **kwargs):
         '''
         Imports a database from the given file
 
@@ -255,6 +255,13 @@ class DatabaseManager():
         Returns:
             True if a new database is created; False otherwise
         '''
+        raise Exception(
+            '\n' +
+            'pathname: {}'.format(pathname) + '\n'
+            'filename: {}'.format(filename) + '\n'
+            'clean: {}'.format(clean)
+        )
+
         # Validate inputs & component state.
         if not self._connected:
             self._emit_error('Not connected to a server')
@@ -267,7 +274,7 @@ class DatabaseManager():
         self._emit_success('Database successfully imported from file')
 
 
-    def export_db(self, path, filename, plaintext, schema_only, **kwargs):
+    def export_db(self, pathname, filename, plain, schema, **kwargs):
         '''
         Exports current database to the given file
 
@@ -278,6 +285,14 @@ class DatabaseManager():
         Returns:
             True if a new file is created; False otherwise
         '''
+        raise Exception(
+            '\n' +
+            'pathname: {}'.format(pathname) + '\n'
+            'filename: {}'.format(filename) + '\n'
+            'plain: {}'.format(plain) + '\n'
+            'schema: {}'.format(schema)
+        )
+
         # Validate inputs & component state.
         if not self._connected:
             self._emit_error('Not connected to a server')
