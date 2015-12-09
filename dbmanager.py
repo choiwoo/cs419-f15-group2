@@ -1,6 +1,6 @@
 # Filename: dbmanager.py
 # Creation Date: Sat 5 Dec 2015
-# Last Modified: Wed 09 Dec 2015 12:04:14 PM MST
+# Last Modified: Wed 09 Dec 2015 12:13:43 PM MST
 # Author: Brett Fedack, Woo Choi, Eric Christensen
 # Update: Cleaned out notes, removed constraint type from structure
 from uiframework import signals
@@ -255,7 +255,7 @@ class DatabaseManager():
             location = r"%s/%s"%(path_name,file_name)
             #print("Importing database %s from %s"%(db_name,location))
 
-            pg_restore_arr = ['pg_restore','-U',db_user, '-W', self._password, '-h', self._hostname]
+            pg_restore_arr = ['pg_restore','-U',db_user, '-h', self._hostname]
 
 
             if 'clean' in kwargs:
@@ -266,7 +266,9 @@ class DatabaseManager():
             pg_restore_arr.append(db_name)
             pg_restore_arr.append(location)
 
-            ps = subprocess.Popen(tuple(pg_restore_arr),stdout=subprocess.PIPE)
+            subenv = os.environ.copy()
+            subenv['PGPASSWORD'] = self._password
+            ps = subprocess.Popen(tuple(pg_restore_arr),stdout=subprocess.PIPE, env = subenv)
         except NameError as e:
             #print("Name error %s"%(str(e)))
             self._emit_error('Name error %s'%(str(e)))
@@ -323,7 +325,7 @@ class DatabaseManager():
             #print("Exporting database %s from %s"%(db_name,destination))
 
 
-            pg_dump_arr = ['pg_dump','-U', db_user, '-W', self._password, '-h', self._hostname, '-v','-O']
+            pg_dump_arr = ['pg_dump','-U', db_user, '-h', self._hostname, '-v','-O']
 
             if 'plain' in kwargs:
                 if kwargs['plain']:
@@ -340,7 +342,9 @@ class DatabaseManager():
             pg_dump_arr.append('-f')
             pg_dump_arr.append(destination)
 
-            ps = subprocess.Popen(tuple(pg_dump_arr),stdout=subprocess.PIPE)
+            subenv = os.environ.copy()
+            subenv['PGPASSWORD'] = self._password
+            ps = subprocess.Popen(tuple(pg_dump_arr),stdout=subprocess.PIPE, env = subenv)
         except NameError as e:
             #print("Name error %s"%(str(e)))
             self._emit_error('Name error %s'%(str(e)))
