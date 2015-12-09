@@ -36,7 +36,7 @@ echo "DATABASE = $DB_NAME"
 
 
 # Copy directory to home directory
-cp -r /vagrant/cs419-f15-group2/* /home/vagrant
+cp -r /vagrant/* /home/vagrant
 
 
 
