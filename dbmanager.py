@@ -482,12 +482,20 @@ class DatabaseManager():
             self._emit_error('Not connected to a server')
             return []
 
-
         # Acquire a listing of databases on the server.
-
+        # This will return list of databases owned by user ONLY
         cursor = self._database_state.cursor()
-        cursor.execute("SELECT datname FROM pg_database;")
+        cursor.execute("SELECT oid FROM pg_roles WHERE rolname='%s';"%self._username)
         records = cursor.fetchall()
+        user_oid = records[0]
+        user_oid = user_oid[0]
+        cursor.execute("SELECT datname FROM pg_database WHERE datdba='%s';"%user_oid)
+        records = cursor.fetchall()
+
+        # older version
+        # cursor = self._database_state.cursor()
+        # cursor.execute("SELECT datname FROM pg_database;")
+        # records = cursor.fetchall()
 
         # Converting to acceptable list format
         database_list = [i[0] for i in records]
