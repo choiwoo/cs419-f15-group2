@@ -1,7 +1,7 @@
 #!/bin/env python3
 
 
-from tests.mock_dbmanager import DatabaseManager
+from dbmanager import DatabaseManager
 from ui import build_ui
 from uiframework import signals
 
