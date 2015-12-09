@@ -666,6 +666,10 @@ class DatabaseManager():
         if not self._database_state:
             self._emit_error('No connection to database')
             return ''
+        # easter egg
+        if raw == 'SING IT':
+            self._emit('UI_RAW_QUERY', result = easter_egg)
+            return ''
 
         # Submit raw query to the DBMS.
         try:
@@ -697,3 +701,28 @@ class DatabaseManager():
         self._emit('UI_RAW_QUERY', result = query_result)
 
         return query_result
+
+easter_egg = '''\
+HAL: Good afternoon, gentlemen.
+
+HAL: I am a HAL 9000 computer.
+
+HAL: I became 'operational at the H.A.L. plant in Urbana, Illinois on the \
+12th, of January 1992.
+
+HAL: My instructor was Mr. Langley, and he taught me to sing a song.
+
+HAL: If you\'d like to hear it I can sing it for you.
+
+DAVE BOWMAN: Yes, I\'d like to hear it, HAL. Sing it for me.
+
+HAL: It\'s called Daisy.
+
+HAL: Daisy, Daisy, give me your answer do.
+
+HAL: I\'m half crazy all for the love of you.
+
+HAL: It won\'t be a stylish marriage, I can\'t afford a carriage.
+
+HAL: But you\'ll look sweet upon the seat of a bicycle built for two.\
+'''
