@@ -1,6 +1,6 @@
 # Filename: ui.py
 # Creation Date: Thu 05 Nov 2015
-# Last Modified: Sun 06 Dec 2015 12:37:40 PM MST
+# Last Modified: Wed 09 Dec 2015 10:16:17 AM MST
 # Author: Brett Fedack
 
 
@@ -303,7 +303,7 @@ def build_database_tab(parent):
     )
 
     translator = DatasigTranslator(form)
-    translator.map_output('DATASIG_OUT', text = 'path')
+    translator.map_output('DATASIG_OUT', text = 'pathname')
 
     import_path = TextField('Path', translator, ord('p'))
     import_path.scale(width = -12).offset(x = 12)
@@ -317,7 +317,7 @@ def build_database_tab(parent):
     import_file.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
-    translator.map_output('DATASIG_OUT', enabled = 'overwrite')
+    translator.map_output('DATASIG_OUT', enabled = 'clean')
 
     overwrite = FlipSwitch('Overwrite Existing', translator, ord('o'))
     overwrite.offset(32, 6)
@@ -334,11 +334,11 @@ def build_database_tab(parent):
 
     form = Form(
         translator,
-        path = '', filename = '', plaintext = False, schema_only = False
+        path = '', filename = '', plain = False, schema = False
     )
 
     translator = DatasigTranslator(form)
-    translator.map_output('DATASIG_OUT', text = 'path')
+    translator.map_output('DATASIG_OUT', text = 'pathname')
 
     export_path = TextField('Path', translator, ord('p'))
     export_path.scale(width = -12).offset(x = 12)
@@ -352,14 +352,14 @@ def build_database_tab(parent):
     export_file.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
-    translator.map_output('DATASIG_OUT', enabled = 'plaintext')
+    translator.map_output('DATASIG_OUT', enabled = 'plain')
 
     plaintext = FlipSwitch('Plain Text', translator, ord('t'))
     plaintext.offset(24, 6)
     plaintext.linked_label.embellish(suffix = ': ').to_center(cross = True).shift(-1)
 
     translator = DatasigTranslator(form)
-    translator.map_output('DATASIG_OUT', enabled = 'schema_only')
+    translator.map_output('DATASIG_OUT', enabled = 'schema')
 
     schema_only = FlipSwitch('Schema Only', translator, ord('s'))
     schema_only.offset(50, 6)

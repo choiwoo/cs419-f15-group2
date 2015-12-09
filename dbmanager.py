@@ -1,6 +1,6 @@
 # Filename: dbmanager.py
 # Creation Date: Sat 5 Dec 2015
-# Last Modified: Sat 6 Dec 2015 04:30:00 PM PST
+# Last Modified: Wed 09 Dec 2015 10:17:44 AM MST
 # Author: Brett Fedack, Woo Choi, Eric Christensen
 # Update: Cleaned out notes, removed constraint type from structure
 from uiframework import signals
@@ -219,13 +219,13 @@ class DatabaseManager():
         return True
 
 
-    def import_db(self, path, filetype, **kwargs):
+    def import_db(self, pathname, filename, **kwargs):
         '''
         Imports a database from the given file
 
         Parameters:
-            path (str): Path to input file
-            filetype (str): Format of input file
+            pathname (str): Location of input file
+            filename (str): Name of input file
 
         Returns:
             True if a new database is created; False otherwise
@@ -279,13 +279,13 @@ class DatabaseManager():
 
 
 
-    def export_db(self, path, filetype, **kwargs):
+    def export_db(self, pathname, filename, **kwargs):
         '''
         Exports current database to the given file
 
         Parameters:
-            path (str): Path to output file
-            filetype (str): Format of output file
+            pathname (str): Location of input file
+            filename (str): Name of input file
 
         Returns:
             True if a new file is created; False otherwise
