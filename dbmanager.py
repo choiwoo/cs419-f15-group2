@@ -268,7 +268,8 @@ class DatabaseManager():
 
             subenv = os.environ.copy()
             subenv['PGPASSWORD'] = self._password
-            ps = subprocess.Popen(tuple(pg_restore_arr),stdout=subprocess.PIPE, env = subenv)
+            devnull = open(os.devnull, 'w')
+            ps = subprocess.Popen(tuple(pg_restore_arr),stdout=devnull, stderr=devnull, env = subenv)
         except NameError as e:
             #print("Name error %s"%(str(e)))
             self._emit_error('Name error %s'%(str(e)))
@@ -325,7 +326,7 @@ class DatabaseManager():
             #print("Exporting database %s from %s"%(db_name,destination))
 
 
-            pg_dump_arr = ['pg_dump','-U', db_user, '-h', self._hostname, '-v','-O']
+            pg_dump_arr = ['pg_dump','-U', db_user, '-h', self._hostname,'-O']
 
             if 'plain' in kwargs:
                 if kwargs['plain']:
@@ -682,7 +683,7 @@ class DatabaseManager():
                 # Return query_result as a string
                 query_result = "" + str(records)
             except:
-                query_result = 'Query Accepted'
+                query_result = 'Query Accepted:\n' + raw
                 ### TESTING ###
                 #print (query_result)
 
