@@ -605,8 +605,7 @@ class DatabaseManager():
             # Query for table structure
             cursor_str = """SELECT DISTINCT c.column_name, c.data_type,
             c.character_maximum_length, c.is_nullable
-            FROM information_schema.table_constraints tc
-            JOIN information_schema.columns AS c ON c.table_name = tc.table_name
+            FROM information_schema.columns c
             WHERE c.table_name = '%s';"""%(self._table_curr)
             cursor.execute(cursor_str)
             records = cursor.fetchall()
