@@ -233,10 +233,10 @@ class DatabaseManager():
             self._emit_error('Not connected to a server')
             return False
         if not pathname:
-            self._emit_error('No database selected')
+            self._emit_error('No pathname selected')
             return False
         if not filename:
-            self._emit_error('No database selected')
+            self._emit_error('No filename selected')
             return False
 
         # Import given file.
@@ -285,7 +285,6 @@ class DatabaseManager():
         return True
 
 
-
     def export_db(self, pathname, filename, **kwargs):
         '''
         Exports current database to the given file
@@ -305,10 +304,10 @@ class DatabaseManager():
             self._emit_error('No database selected')
             return False
         if not pathname:
-            self._emit_error('No database selected')
+            self._emit_error('No pathname selected')
             return False
         if not filename:
-            self._emit_error('No database selected')
+            self._emit_error('No filename selected')
             return False
         # Export current database to given file.
         db_table = ""
@@ -672,7 +671,7 @@ class DatabaseManager():
             self._emit_error('No connection to database')
             return ''
         # easter egg
-        if raw == 'SING IT':
+        if raw == 'DAISY':
             self._emit('UI_RAW_QUERY', result = easter_egg)
             return ''
 
