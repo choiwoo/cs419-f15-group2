@@ -40,7 +40,7 @@ CREATE DATABASE $DB_NAME2 WITH OWNER=$DB_USER2
                                   LC_COLLATE='en_US.utf8'
                                   LC_CTYPE='en_US.utf8'
                                   ENCODING='UTF8'
-                                  TEMPLATE=template0;								  
+                                  TEMPLATE=template0;
 EOF
 
 echo "USER1:"
@@ -52,10 +52,11 @@ echo "USER2:"
 echo "USER= $DB_USER2"
 echo "PASSWORD = $DB_PASS2"
 echo "DATABASE = $DB_NAME2"
+echo "Download Finished. Please Proceed."
 
 # Copy directory to home directory
 cp -r /vagrant/* /home/vagrant
-
+chmod 755 ./play
 
 
 if ! [ -L /var/www ]; then

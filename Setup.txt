@@ -20,14 +20,14 @@ Direction
 8. Click Terminal Emulator
 	terminal should automatically start at /home/vagrant
 	if not, cd into /home/vagrant
-9. run play: 
-	./play
+9. run play:
+	bash ./play
 
 ** bootstrap.sh creates following users and dbs:
 	These user information can be changed in bootstrap.sh!
 	1. guest01 with password pass01 and a database guest01.
-	2. guest02 with password pass02 and a database guest02.		
-	
+	2. guest02 with password pass02 and a database guest02.
+
 Sample
 
 Host Name: localhost
