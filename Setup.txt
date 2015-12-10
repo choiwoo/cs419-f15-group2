@@ -1,4 +1,4 @@
-How to set up VM
+How to Set Up the VM and Start the Program
 
 
 Downloads
@@ -15,14 +15,19 @@ Direction
 	password:	vagrant
 5. Once logged in, type in : "sudo startxfce4&" (without quotation marks)
 	This will start a gui based desktop
-6. Click Application Menu from the upper left corner
-7. Click Terminal Emulator
-8. run play: 
+6. Choose the 'use default config'.
+7. Click Application Menu from the upper left corner
+8. Click Terminal Emulator
+	terminal should automatically start at /home/vagrant
+	if not, cd into /home/vagrant
+9. run play: 
 	./play
 
-** bootstrap.sh creates user guest01 with password pass01 and a database guest01.
-** These can be changed in bootstrap.sh.
-
+** bootstrap.sh creates following users and dbs:
+	These user information can be changed in bootstrap.sh!
+	1. guest01 with password pass01 and a database guest01.
+	2. guest02 with password pass02 and a database guest02.		
+	
 Sample
 
 Host Name: localhost

@@ -1,8 +1,8 @@
 # Filename: dbmanager.py
 # Creation Date: Sat 5 Dec 2015
-# Last Modified: Wed 09 Dec 2015 12:13:43 PM MST
+# Last Modified: Wed 09 Dec 2015 03:50:00 PM PST
 # Author: Brett Fedack, Woo Choi, Eric Christensen
-# Update: Cleaned out notes, removed constraint type from structure
+
 from uiframework import signals
 import psycopg2
 import subprocess
@@ -11,9 +11,6 @@ import sys
 import pickle
 import uuid
 import os.path
-# for Testing
-#import signals
-
 
 # NOTE: By convention, signals with "UI_" prefix are sent to the user
 # interface, and those with "DB_" prefix are received by this component.
