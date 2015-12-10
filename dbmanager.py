@@ -699,6 +699,8 @@ class DatabaseManager():
         except psycopg2.Error as e:
             # Display error in the output box
             self._emit('UI_RAW_QUERY', result = str(e))
+            # roll back when there is an error
+            self._database_state.rollback()
             return ''
 
         # Transmit query result.
