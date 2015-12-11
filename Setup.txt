@@ -9,7 +9,7 @@ Downloads
 Direction
 1. Go to the directory cs419-f15-group2 (from github pull)
 2. type in : vagrant up
-3. wait a lonnnnng time until everything is downloaded and installed
+3. wait until everything is downloaded and installed
 4. log into vagrant
 	id: 		vagrant
 	password:	vagrant
@@ -22,6 +22,17 @@ Direction
 	if not, cd into /home/vagrant
 9. run play:
 	bash ./play
+10. Possible errors:
+	./play may return error
+		bad interpreter: no such file or directory
+
+	try:
+		bash ./play
+
+	If above solutions do not work, please do the following:
+		apt-get install dos2unix
+		dos2unix ./play
+		./play
 
 ** bootstrap.sh creates following users and dbs:
 	These user information can be changed in bootstrap.sh!
