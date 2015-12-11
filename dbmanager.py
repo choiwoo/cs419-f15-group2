@@ -235,6 +235,12 @@ class DatabaseManager():
         if not pathname:
             self._emit_error('No pathname selected')
             return False
+        if not os.path.isdir(pathname):
+            self._emit_error('Path name %s could not be found'%(pathname))
+            return False
+        if not os.path.exists(r"%s/%s"%(pathname,filename)):
+            self._emit_error('File %s could not be found'%(filename))
+            return False
         if not filename:
             self._emit_error('No filename selected')
             return False
@@ -305,6 +311,9 @@ class DatabaseManager():
             return False
         if not pathname:
             self._emit_error('No pathname selected')
+            return False
+        if not os.path.isdir(pathname):
+            self._emit_error('Path name: %s could not be found'%(pathname))
             return False
         if not filename:
             self._emit_error('No filename selected')
