@@ -33,6 +33,10 @@ Direction
 		apt-get install dos2unix
 		dos2unix ./play
 		./play
+	If nothing works:
+		play is a very simple shell script to run main.py with color
+		you can run main.py directrly:
+			TERM=xterm-256color python3 ./main.py	
 
 ** bootstrap.sh creates following users and dbs:
 	These user information can be changed in bootstrap.sh!
